@@ -7,6 +7,7 @@ class DetalleVentaCreate(BaseModel):
     subtotal: float
 
 class VentaCreate(BaseModel):
+    idempotency_key: str
     total: float
     detalles: List[DetalleVentaCreate]
 

@@ -1,4 +1,4 @@
-﻿from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean
+﻿from sqlalchemy import Column, Integer, String, DateTime, Boolean, ForeignKey
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from app.core.db.database import Base
@@ -8,76 +8,41 @@ class Empresa(Base):
     id = Column(Integer, primary_key=True, index=True)
     razon_social = Column(String, nullable=False)
     nombre_comercial = Column(String, nullable=False)
-    identificacion_fiscal = Column(String, nullable=True)
     pais = Column(String, default="Argentina")
-    moneda = Column(String, default="ARS")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     establecimientos = relationship("Establecimiento", back_populates="empresa")
 
 class Establecimiento(Base):
     __tablename__ = "establecimientos"
     id = Column(Integer, primary_key=True, index=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False) # Regla del Manual
     nombre = Column(String, nullable=False)
-    tipo = Column(String, default="local")
-    direccion = Column(String, nullable=True)
-    zona_horaria = Column(String, default="America/Argentina/Buenos_Aires")
-    moneda_operativa = Column(String, default="ARS")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     empresa = relationship("Empresa", back_populates="establecimientos")
 
 class Usuario(Base):
     __tablename__ = "usuarios"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    establishment_id = Column(Integer, ForeignKey("establecimientos.id"), nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     nombre_completo = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
-    activo = Column(Boolean, default=True)
-    es_superadmin = Column(Boolean, default=False) # NUEVO CAMPO
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    es_superadmin = Column(Boolean, default=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
 
 class Rol(Base):
     __tablename__ = "roles"
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String, unique=True, nullable=False)
-    descripcion = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    nombre = Column(String, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-    permisos = relationship("Permiso", back_populates="rol")
 
 class Acceso(Base):
     __tablename__ = "accesos"
     id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     establecimiento_id = Column(Integer, ForeignKey("establecimientos.id"), nullable=False)
     rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-    usuario = relationship("Usuario")
-    establecimiento = relationship("Establecimiento")
-    rol = relationship("Rol")
-
-class Permiso(Base):
-    __tablename__ = "permisos"
-    id = Column(Integer, primary_key=True, index=True)
-    rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
-    recurso = Column(String, nullable=False)
-    accion = Column(String, nullable=False)
-    alcance = Column(String, default="propio")
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    rol = relationship("Rol", back_populates="permisos")
-
-class Configuracion(Base):
-    __tablename__ = "configuraciones"
-    id = Column(Integer, primary_key=True, index=True)
-    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
-    clave = Column(String, nullable=False)
-    valor = Column(String, nullable=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
