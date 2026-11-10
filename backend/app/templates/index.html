@@ -21,13 +21,14 @@
     </style>
 </head>
 <body>
-    <div id="login" class="login-box">
+    <!-- Envolvemos el login en un <form> -->
+    <form id="login" class="login-box" onsubmit="iniciarSesion(event)">
         <h2>Ingreso al Sistema</h2>
-        <input type="email" id="log_email" placeholder="Email">
-        <input type="password" id="log_password" placeholder="Contraseña">
-        <button onclick="iniciarSesion()">Ingresar</button>
+        <input type="email" id="log_email" placeholder="Email" required>
+        <input type="password" id="log_password" placeholder="Contraseña" required>
+        <button type="submit">Ingresar</button>
         <div id="error"></div>
-    </div>
+    </form>
 
     <div id="dashboard">
         <div class="navbar">
@@ -97,7 +98,10 @@
     </div>
 
     <script>
-        async function iniciarSesion() {
+        // Agregamos el parámetro 'e' para poder hacer preventDefault
+        async function iniciarSesion(e) {
+            if(e) e.preventDefault(); // Evita que la página se recargue
+
             const email = document.getElementById('log_email').value;
             const pass = document.getElementById('log_password').value;
             const res = await fetch('/login', {
@@ -109,7 +113,6 @@
                 document.getElementById('nombreUser').innerText = data.nombre;
                 document.getElementById('nombreEspacio').innerText = data.nombre;
                 
-                // MAGIA: Si es SuperAdmin, mostramos el menú rojo
                 if (data.es_superadmin) {
                     document.getElementById('menu-saas').style.display = 'block';
                 } else {
