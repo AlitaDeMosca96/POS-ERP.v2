@@ -4,17 +4,28 @@ from typing import List
 from app.core.db.database import get_db
 from app.modules.empresa.models import Empresa, Establecimiento, Usuario, Rol, Acceso, Permiso
 from app.modules.empresa.schemas import *
-from passlib.context import CryptContext
+import bcrypt
 
 router = APIRouter(tags=["Modulo Empresa"])
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+def verificar_password(plain_password: str, hashed_password: str):
+    return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+
+def generar_hash(password: str):
+    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
 @router.post("/login")
 def login(datos: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == datos.get("email")).first()
     if not usuario: raise HTTPException(status_code=401, detail="Usuario no encontrado")
-    if not pwd_context.verify(datos.get("password"), usuario.password_hash):
+    
+    try:
+        if not verificar_password(datos.get("password"), usuario.password_hash):
+            raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+    except Exception:
+        # Por si el usuario viejo tiene el hash roto
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+
     return {"status": "ok", "nombre": usuario.nombre_completo, "email": usuario.email, "es_superadmin": usuario.es_superadmin}
 
 @router.post("/empresas/", response_model=EmpresaResponse)
@@ -33,7 +44,8 @@ def listar_establecimientos(db: Session = Depends(get_db)): return db.query(Esta
 def crear_usuario(user_in: UsuarioCreate, db: Session = Depends(get_db)):
     existe = db.query(Usuario).filter(Usuario.email == user_in.email).first()
     if existe: raise HTTPException(status_code=400, detail="Email ya registrado")
-    hash_real = pwd_context.hash(user_in.password)
+    
+    hash_real = generar_hash(user_in.password)
     nuevo = Usuario(email=user_in.email, nombre_completo=user_in.nombre_completo, password_hash=hash_real)
     db.add(nuevo); db.commit(); db.refresh(nuevo); return nuevo
 @router.get("/usuarios/", response_model=List[UsuarioResponse])
