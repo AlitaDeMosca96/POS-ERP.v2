@@ -48,6 +48,7 @@ class Rol(Base):
     descripcion = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
+    permisos = relationship("Permiso", back_populates="rol")
 
 class Acceso(Base):
     __tablename__ = "accesos"
@@ -57,7 +58,25 @@ class Acceso(Base):
     rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
-
     usuario = relationship("Usuario")
     establecimiento = relationship("Establecimiento")
     rol = relationship("Rol")
+
+class Permiso(Base):
+    __tablename__ = "permisos"
+    id = Column(Integer, primary_key=True, index=True)
+    rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    recurso = Column(String, nullable=False) # ej: 'empresa', 'pedido'
+    accion = Column(String, nullable=False)  # ej: 'ver', 'crear'
+    alcance = Column(String, default="propio") # propio, sector, empresa, grupo
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    rol = relationship("Rol", back_populates="permisos")
+
+class Configuracion(Base):
+    __tablename__ = "configuraciones"
+    id = Column(Integer, primary_key=True, index=True)
+    empresa_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    clave = Column(String, nullable=False)
+    valor = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

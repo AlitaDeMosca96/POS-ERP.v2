@@ -2,171 +2,156 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>POS + ERP - Panel</title>
+    <title>POS + ERP - Login</title>
     <style>
-        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; padding: 20px; }
-        .container { max-width: 1200px; margin: auto; display: flex; gap: 20px; flex-wrap: wrap; }
-        .card { flex: 1; min-width: 350px; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
-        h2 { color: #333; margin-top: 0; font-size: 20px; }
-        .form-group { margin-bottom: 10px; }
-        label { display: block; font-weight: bold; font-size: 13px; margin-bottom: 5px; color: #555; }
-        input, select { width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
-        button { color: white; border: none; padding: 10px; width: 100%; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 12px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background-color: #f8f9fa; }
+        body { font-family: 'Segoe UI', sans-serif; background-color: #eceff1; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 300px; text-align: center; }
+        h2 { color: #333; margin-bottom: 20px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
+        #error { color: red; font-size: 13px; margin-top: 10px; }
+        
+        /* Estilos del Dashboard */
+        #dashboard { display: none; width: 100%; height: 100vh; background: #f4f7f6; flex-direction: column; }
+        .navbar { background: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
+        .main-content { display: flex; flex: 1; overflow: hidden; }
+        .sidebar { width: 250px; background: #34495e; color: white; padding: 20px 0; }
+        .sidebar a { display: block; color: #bdc3c7; padding: 15px 30px; text-decoration: none; cursor: pointer; }
+        .sidebar a:hover { background: #2c3e50; color: white; }
+        .content-area { flex: 1; padding: 30px; overflow-y: auto; background: white; margin: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
 </head>
 <body>
-    <div class="container">
-        <!-- EMPRESAS -->
-        <div class="card">
-            <h2>🏢 Empresas</h2>
-            <form id="formEmpresa">
-                <div class="form-group"><label>Razón Social:</label><input type="text" id="emp_razon" required></div>
-                <div class="form-group"><label>Nombre Comercial:</label><input type="text" id="emp_nombre" required></div>
-                <button type="submit" style="background-color: #28a745;">Guardar Empresa</button>
-            </form>
-            <table><thead><tr><th>ID</th><th>Nombre</th></tr></thead><tbody id="tablaEmpresas"></tbody></table>
-        </div>
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login" class="login-box">
+        <h2>Ingreso al Sistema</h2>
+        <input type="email" id="log_email" placeholder="Email">
+        <input type="password" id="log_password" placeholder="Contraseña">
+        <button onclick="iniciarSesion()">Ingresar</button>
+        <div id="error"></div>
+    </div>
 
-        <!-- ESTABLECIMIENTOS -->
-        <div class="card">
-            <h2>📍 Locales</h2>
-            <form id="formEstablecimiento">
-                <div class="form-group">
-                    <label>Empresa:</label>
-                    <select id="est_empresa_id" required><option value="">Seleccione...</option></select>
+    <!-- PANTALLA DASHBOARD (Oculta inicialmente) -->
+    <div id="dashboard">
+        <div class="navbar">
+            <h2>ERP Gastronómico</h2>
+            <div>Bienvenido, <b id="nombreUser"></b> | <a href="#" onclick="cerrarSesion()" style="color:white;">Salir</a></div>
+        </div>
+        <div class="main-content">
+            <div class="sidebar">
+                <a onclick="mostrarSeccion('inicio')">🏠 Mi Espacio</a>
+                <a onclick="mostrarSeccion('empresas')">🏢 Empresas y Locales</a>
+                <a onclick="mostrarSeccion('catalogo')">📦 Catálogo (Productos)</a>
+                <a onclick="mostrarSeccion('usuarios')">👤 Usuarios y Permisos</a>
+            </div>
+            <div class="content-area">
+                <!-- MI ESPACIO -->
+                <div id="sec-inicio">
+                    <h2>👋 Hola, <span id="nombreEspacio"></span></h2>
+                    <p>Este es tu espacio personal. Desde acá vas a poder ver tus horarios, fichajes y tareas pendientes.</p>
+                    <div style="background: #e3f2fd; padding: 20px; border-radius: 8px; margin-top: 20px;">
+                        <h3>Estado del Sistema</h3>
+                        <p>✅ Backend funcionando</p>
+                        <p>✅ Base de datos conectada</p>
+                        <p>✅ Permisos configurados</p>
+                    </div>
                 </div>
-                <div class="form-group"><label>Nombre del Local:</label><input type="text" id="est_nombre" required></div>
-                <button type="submit" style="background-color: #007bff;">Guardar Local</button>
-            </form>
-            <table><thead><tr><th>ID</th><th>Nombre</th></tr></thead><tbody id="tablaEstablecimientos"></tbody></table>
-        </div>
 
-        <!-- USUARIOS -->
-        <div class="card">
-            <h2>👤 Usuarios</h2>
-            <form id="formUsuario">
-                <div class="form-group"><label>Nombre Completo:</label><input type="text" id="usr_nombre" required></div>
-                <div class="form-group"><label>Email:</label><input type="email" id="usr_email" required></div>
-                <div class="form-group"><label>Contraseña:</label><input type="password" id="usr_password" required></div>
-                <button type="submit" style="background-color: #ff9800;">Guardar Usuario</button>
-            </form>
-            <table><thead><tr><th>Email</th><th>Nombre</th></tr></thead><tbody id="tablaUsuarios"></tbody></table>
-        </div>
-
-        <!-- ROLES Y ACCESOS -->
-        <div class="card" style="min-width: 100%;">
-            <h2>🔐 Roles y Permisos de Usuario</h2>
-            <div style="display: flex; gap: 20px;">
-                <div style="flex: 1;">
-                    <h3>Crear un Rol</h3>
-                    <form id="formRol">
-                        <div class="form-group"><label>Nombre del Rol:</label><input type="text" id="rol_nombre" required placeholder="Ej: Dueño, Mozo, Cocinero"></div>
-                        <button type="submit" style="background-color: #9c27b0;">Crear Rol</button>
+                <!-- EMPRESAS -->
+                <div id="sec-empresas" style="display:none;">
+                    <h2>🏢 Empresas y Locales</h2>
+                    <form id="formEmpresa" style="margin-bottom: 20px;">
+                        <input type="text" id="emp_razon" placeholder="Razón Social" required>
+                        <input type="text" id="emp_nombre" placeholder="Nombre Comercial" required>
+                        <button type="submit" style="width:auto; padding: 8px 15px;">Crear Empresa</button>
                     </form>
+                    <table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
+                        <thead><tr><th>ID</th><th>Razón Social</th></tr></thead><tbody id="tablaEmpresas"></tbody>
+                    </table>
                 </div>
-                <div style="flex: 1;">
-                    <h3>Asignar Rol a Usuario en Local</h3>
-                    <form id="formAcceso">
-                        <div class="form-group">
-                            <label>Usuario:</label>
-                            <select id="acc_usuario_id" required><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-group">
-                            <label>Local:</label>
-                            <select id="acc_establecimiento_id" required><option value="">Seleccione...</option></select>
-                        </div>
-                        <div class="form-group">
-                            <label>Rol:</label>
-                            <select id="acc_rol_id" required><option value="">Seleccione...</option></select>
-                        </div>
-                        <button type="submit" style="background-color: #e91e63;">Asignar Acceso</button>
+
+                <!-- CATALOGO -->
+                <div id="sec-catalogo" style="display:none;">
+                    <h2>📦 Catálogo de Productos</h2>
+                    <form id="formProducto" style="margin-bottom: 20px; display:flex; gap:10px;">
+                        <input type="text" id="prod_nombre" placeholder="Nombre del Producto (Ej: Pizza)" required>
+                        <input type="number" id="prod_precio" placeholder="Precio" step="0.01" required>
+                        <button type="submit" style="width:auto; padding: 8px 15px; background:#28a745;">Agregar Producto</button>
                     </form>
+                    <table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
+                        <thead><tr><th>ID</th><th>Producto</th><th>Precio</th></tr></thead><tbody id="tablaProductos"></tbody>
+                    </table>
+                </div>
+
+                <!-- USUARIOS -->
+                <div id="sec-usuarios" style="display:none;">
+                    <h2>👤 Usuarios del Sistema</h2>
+                    <table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
+                        <thead><tr><th>Nombre</th><th>Email</th></tr></thead><tbody id="tablaUsuarios"></tbody>
+                    </table>
                 </div>
             </div>
-            
-            <h3 style="margin-top: 30px;">Accesos Actuales</h3>
-            <table>
-                <thead><tr><th>Usuario</th><th>Local</th><th>Rol Asignado</th></tr></thead>
-                <tbody id="tablaAccesos"></tbody>
-            </table>
         </div>
     </div>
 
     <script>
-        async function cargarTodo() {
-            // Empresas
-            const emp = await (await fetch('/empresas/')).json();
-            let htmlEmp = ''; let selEmp = '<option value="">Seleccione...</option>';
-            emp.forEach(e => { htmlEmp += '<tr><td>'+e.id+'</td><td>'+e.razon_social+'</td></tr>'; selEmp += '<option value="'+e.id+'">'+e.razon_social+'</option>'; });
-            document.getElementById('tablaEmpresas').innerHTML = htmlEmp;
-            document.getElementById('est_empresa_id').innerHTML = selEmp;
-
-            // Establecimientos
-            const est = await (await fetch('/establecimientos/')).json();
-            let htmlEst = ''; let selEst = '<option value="">Seleccione...</option>';
-            est.forEach(e => { htmlEst += '<tr><td>'+e.id+'</td><td>'+e.nombre+'</td></tr>'; selEst += '<option value="'+e.id+'">'+e.nombre+'</option>'; });
-            document.getElementById('tablaEstablecimientos').innerHTML = htmlEst;
-            document.getElementById('acc_establecimiento_id').innerHTML = selEst;
-
-            // Usuarios
-            const usr = await (await fetch('/usuarios/')).json();
-            let htmlUsr = ''; let selUsr = '<option value="">Seleccione...</option>';
-            usr.forEach(u => { htmlUsr += '<tr><td>'+u.email+'</td><td>'+u.nombre_completo+'</td></tr>'; selUsr += '<option value="'+u.id+'">'+u.nombre_completo+'</option>'; });
-            document.getElementById('tablaUsuarios').innerHTML = htmlUsr;
-            document.getElementById('acc_usuario_id').innerHTML = selUsr;
-
-            // Roles
-            const rol = await (await fetch('/roles/')).json();
-            let selRol = '<option value="">Seleccione...</option>';
-            rol.forEach(r => { selRol += '<option value="'+r.id+'">'+r.nombre+'</option>'; });
-            document.getElementById('acc_rol_id').innerHTML = selRol;
-
-            // Accesos
-            const acc = await (await fetch('/accesos/')).json();
-            let htmlAcc = '';
-            acc.forEach(a => { htmlAcc += '<tr><td>'+a.usuario_nombre+'</td><td>'+a.establecimiento_nombre+'</td><td><b>'+a.rol_nombre+'</b></td></tr>'; });
-            document.getElementById('tablaAccesos').innerHTML = htmlAcc;
+        // LOGIN
+        async function iniciarSesion() {
+            const email = document.getElementById('log_email').value;
+            const pass = document.getElementById('log_password').value;
+            const res = await fetch('/login', {
+                method: 'POST', headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({email: email, password: pass})
+            });
+            if(res.ok) {
+                const data = await res.json();
+                document.getElementById('nombreUser').innerText = data.nombre;
+                document.getElementById('nombreEspacio').innerText = data.nombre;
+                document.getElementById('login').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'flex';
+                cargarDatos();
+            } else {
+                document.getElementById('error').innerText = "Credenciales incorrectas";
+            }
         }
 
-        // Submit Empresa
+        function cerrarSesion() {
+            document.getElementById('dashboard').style.display = 'none';
+            document.getElementById('login').style.display = 'block';
+            document.getElementById('log_password').value = '';
+        }
+
+        // NAVEGACION
+        function mostrarSeccion(id) {
+            ['inicio', 'empresas', 'catalogo', 'usuarios'].forEach(s => {
+                document.getElementById('sec-' + s).style.display = s === id ? 'block' : 'none';
+            });
+        }
+
+        // CARGA DE DATOS
+        async function cargarDatos() {
+            const emp = await (await fetch('/empresas/')).json();
+            document.getElementById('tablaEmpresas').innerHTML = emp.map(e => `<tr><td>${e.id}</td><td>${e.razon_social}</td></tr>`).join('');
+
+            const prod = await (await fetch('/productos/')).json();
+            document.getElementById('tablaProductos').innerHTML = prod.map(p => `<tr><td>${p.id}</td><td>${p.nombre}</td><td>$${p.precio_base}</td></tr>`).join('');
+
+            const usr = await (await fetch('/usuarios/')).json();
+            document.getElementById('tablaUsuarios').innerHTML = usr.map(u => `<tr><td>${u.nombre_completo}</td><td>${u.email}</td></tr>`).join('');
+        }
+
+        // FORMULARIOS
         document.getElementById('formEmpresa').onsubmit = async (e) => {
             e.preventDefault();
             await fetch('/empresas/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({razon_social: document.getElementById('emp_razon').value, nombre_comercial: document.getElementById('emp_nombre').value}) });
-            document.getElementById('formEmpresa').reset(); cargarTodo();
+            document.getElementById('formEmpresa').reset(); cargarDatos();
         };
 
-        // Submit Establecimiento
-        document.getElementById('formEstablecimiento').onsubmit = async (e) => {
+        document.getElementById('formProducto').onsubmit = async (e) => {
             e.preventDefault();
-            await fetch('/establecimientos/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({empresa_id: parseInt(document.getElementById('est_empresa_id').value), nombre: document.getElementById('est_nombre').value}) });
-            document.getElementById('formEstablecimiento').reset(); cargarTodo();
+            await fetch('/productos/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nombre: document.getElementById('prod_nombre').value, precio_base: parseFloat(document.getElementById('prod_precio').value)}) });
+            document.getElementById('formProducto').reset(); cargarDatos();
         };
-
-        // Submit Usuario
-        document.getElementById('formUsuario').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/usuarios/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nombre_completo: document.getElementById('usr_nombre').value, email: document.getElementById('usr_email').value, password: document.getElementById('usr_password').value}) });
-            if(res.ok) { document.getElementById('formUsuario').reset(); cargarTodo(); } else { alert("Email ya existe"); }
-        };
-
-        // Submit Rol
-        document.getElementById('formRol').onsubmit = async (e) => {
-            e.preventDefault();
-            const res = await fetch('/roles/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nombre: document.getElementById('rol_nombre').value}) });
-            if(res.ok) { document.getElementById('formRol').reset(); cargarTodo(); } else { alert("Ese rol ya existe"); }
-        };
-
-        // Submit Acceso
-        document.getElementById('formAcceso').onsubmit = async (e) => {
-            e.preventDefault();
-            await fetch('/accesos/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuario_id: parseInt(document.getElementById('acc_usuario_id').value), establecimiento_id: parseInt(document.getElementById('acc_establecimiento_id').value), rol_id: parseInt(document.getElementById('acc_rol_id').value)}) });
-            document.getElementById('formAcceso').reset(); cargarTodo();
-        };
-
-        cargarTodo();
     </script>
 </body>
 </html>

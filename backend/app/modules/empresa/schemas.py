@@ -1,6 +1,6 @@
 ﻿from pydantic import BaseModel
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional
 
 class EmpresaBase(BaseModel):
     razon_social: str
@@ -50,3 +50,13 @@ class AccesoCreate(BaseModel):
     usuario_id: int
     establecimiento_id: int
     rol_id: int
+
+class PermisoBase(BaseModel):
+    rol_id: int
+    recurso: str
+    accion: str
+    alcance: str
+class PermisoCreate(PermisoBase): pass
+class PermisoResponse(PermisoBase):
+    id: int
+    class Config: from_attributes = True
