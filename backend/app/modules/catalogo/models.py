@@ -25,5 +25,17 @@ class Producto(Base):
     nombre = Column(String, nullable=False)
     precio_base = Column(Numeric(10, 2), nullable=False, default=0)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    
     categoria = relationship("Categoria")
+    recetas = relationship("Receta", back_populates="producto")
+
+class Receta(Base):
+    __tablename__ = "recetas"
+    id = Column(Integer, primary_key=True, index=True)
+    producto_id = Column(Integer, ForeignKey("productos.id"), nullable=False)
+    insumo_id = Column(Integer, ForeignKey("insumos.id"), nullable=False)
+    cantidad = Column(Numeric(10, 4), nullable=False) # Ej: 0.200 (kilos)
+    merma_porcentaje = Column(Numeric(5, 2), default=0) # Ej: 5 (%)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    
+    producto = relationship("Producto", back_populates="recetas")
+    insumo = relationship("Insumo")
