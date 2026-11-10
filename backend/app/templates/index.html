@@ -27,10 +27,7 @@
                 <div class="form-group"><label>Nombre Comercial:</label><input type="text" id="emp_nombre" required></div>
                 <button type="submit" style="background-color: #28a745;">Guardar Empresa</button>
             </form>
-            <table>
-                <thead><tr><th>ID</th><th>Nombre</th></tr></thead>
-                <tbody id="tablaEmpresas"></tbody>
-            </table>
+            <table><thead><tr><th>ID</th><th>Nombre</th></tr></thead><tbody id="tablaEmpresas"></tbody></table>
         </div>
 
         <!-- ESTABLECIMIENTOS -->
@@ -44,10 +41,7 @@
                 <div class="form-group"><label>Nombre del Local:</label><input type="text" id="est_nombre" required></div>
                 <button type="submit" style="background-color: #007bff;">Guardar Local</button>
             </form>
-            <table>
-                <thead><tr><th>ID</th><th>Nombre</th></tr></thead>
-                <tbody id="tablaEstablecimientos"></tbody>
-            </table>
+            <table><thead><tr><th>ID</th><th>Nombre</th></tr></thead><tbody id="tablaEstablecimientos"></tbody></table>
         </div>
 
         <!-- USUARIOS -->
@@ -59,56 +53,118 @@
                 <div class="form-group"><label>Contraseña:</label><input type="password" id="usr_password" required></div>
                 <button type="submit" style="background-color: #ff9800;">Guardar Usuario</button>
             </form>
+            <table><thead><tr><th>Email</th><th>Nombre</th></tr></thead><tbody id="tablaUsuarios"></tbody></table>
+        </div>
+
+        <!-- ROLES Y ACCESOS -->
+        <div class="card" style="min-width: 100%;">
+            <h2>🔐 Roles y Permisos de Usuario</h2>
+            <div style="display: flex; gap: 20px;">
+                <div style="flex: 1;">
+                    <h3>Crear un Rol</h3>
+                    <form id="formRol">
+                        <div class="form-group"><label>Nombre del Rol:</label><input type="text" id="rol_nombre" required placeholder="Ej: Dueño, Mozo, Cocinero"></div>
+                        <button type="submit" style="background-color: #9c27b0;">Crear Rol</button>
+                    </form>
+                </div>
+                <div style="flex: 1;">
+                    <h3>Asignar Rol a Usuario en Local</h3>
+                    <form id="formAcceso">
+                        <div class="form-group">
+                            <label>Usuario:</label>
+                            <select id="acc_usuario_id" required><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Local:</label>
+                            <select id="acc_establecimiento_id" required><option value="">Seleccione...</option></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Rol:</label>
+                            <select id="acc_rol_id" required><option value="">Seleccione...</option></select>
+                        </div>
+                        <button type="submit" style="background-color: #e91e63;">Asignar Acceso</button>
+                    </form>
+                </div>
+            </div>
+            
+            <h3 style="margin-top: 30px;">Accesos Actuales</h3>
             <table>
-                <thead><tr><th>Email</th><th>Nombre</th></tr></thead>
-                <tbody id="tablaUsuarios"></tbody>
+                <thead><tr><th>Usuario</th><th>Local</th><th>Rol Asignado</th></tr></thead>
+                <tbody id="tablaAccesos"></tbody>
             </table>
         </div>
     </div>
 
     <script>
         async function cargarTodo() {
-            const resEmp = await fetch('/empresas/');
-            const empresas = await resEmp.json();
-            const tEmp = document.getElementById('tablaEmpresas');
-            const select = document.getElementById('est_empresa_id');
-            tEmp.innerHTML = ''; select.innerHTML = '<option value="">Seleccione...</option>';
-            empresas.forEach(e => {
-                tEmp.innerHTML += '<tr><td>' + e.id + '</td><td>' + e.razon_social + '</td></tr>';
-                select.innerHTML += '<option value="' + e.id + '">' + e.razon_social + '</option>';
-            });
+            // Empresas
+            const emp = await (await fetch('/empresas/')).json();
+            let htmlEmp = ''; let selEmp = '<option value="">Seleccione...</option>';
+            emp.forEach(e => { htmlEmp += '<tr><td>'+e.id+'</td><td>'+e.razon_social+'</td></tr>'; selEmp += '<option value="'+e.id+'">'+e.razon_social+'</option>'; });
+            document.getElementById('tablaEmpresas').innerHTML = htmlEmp;
+            document.getElementById('est_empresa_id').innerHTML = selEmp;
 
-            const resEst = await fetch('/establecimientos/');
-            const ests = await resEst.json();
-            const tEst = document.getElementById('tablaEstablecimientos');
-            tEst.innerHTML = '';
-            ests.forEach(e => { tEst.innerHTML += '<tr><td>' + e.id + '</td><td>' + e.nombre + '</td></tr>'; });
+            // Establecimientos
+            const est = await (await fetch('/establecimientos/')).json();
+            let htmlEst = ''; let selEst = '<option value="">Seleccione...</option>';
+            est.forEach(e => { htmlEst += '<tr><td>'+e.id+'</td><td>'+e.nombre+'</td></tr>'; selEst += '<option value="'+e.id+'">'+e.nombre+'</option>'; });
+            document.getElementById('tablaEstablecimientos').innerHTML = htmlEst;
+            document.getElementById('acc_establecimiento_id').innerHTML = selEst;
 
-            const resUsr = await fetch('/usuarios/');
-            const usrs = await resUsr.json();
-            const tUsr = document.getElementById('tablaUsuarios');
-            tUsr.innerHTML = '';
-            usrs.forEach(u => { tUsr.innerHTML += '<tr><td>' + u.email + '</td><td>' + u.nombre_completo + '</td></tr>'; });
+            // Usuarios
+            const usr = await (await fetch('/usuarios/')).json();
+            let htmlUsr = ''; let selUsr = '<option value="">Seleccione...</option>';
+            usr.forEach(u => { htmlUsr += '<tr><td>'+u.email+'</td><td>'+u.nombre_completo+'</td></tr>'; selUsr += '<option value="'+u.id+'">'+u.nombre_completo+'</option>'; });
+            document.getElementById('tablaUsuarios').innerHTML = htmlUsr;
+            document.getElementById('acc_usuario_id').innerHTML = selUsr;
+
+            // Roles
+            const rol = await (await fetch('/roles/')).json();
+            let selRol = '<option value="">Seleccione...</option>';
+            rol.forEach(r => { selRol += '<option value="'+r.id+'">'+r.nombre+'</option>'; });
+            document.getElementById('acc_rol_id').innerHTML = selRol;
+
+            // Accesos
+            const acc = await (await fetch('/accesos/')).json();
+            let htmlAcc = '';
+            acc.forEach(a => { htmlAcc += '<tr><td>'+a.usuario_nombre+'</td><td>'+a.establecimiento_nombre+'</td><td><b>'+a.rol_nombre+'</b></td></tr>'; });
+            document.getElementById('tablaAccesos').innerHTML = htmlAcc;
         }
 
-        document.getElementById('formEmpresa').addEventListener('submit', async (e) => {
+        // Submit Empresa
+        document.getElementById('formEmpresa').onsubmit = async (e) => {
             e.preventDefault();
             await fetch('/empresas/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({razon_social: document.getElementById('emp_razon').value, nombre_comercial: document.getElementById('emp_nombre').value}) });
             document.getElementById('formEmpresa').reset(); cargarTodo();
-        });
+        };
 
-        document.getElementById('formEstablecimiento').addEventListener('submit', async (e) => {
+        // Submit Establecimiento
+        document.getElementById('formEstablecimiento').onsubmit = async (e) => {
             e.preventDefault();
             await fetch('/establecimientos/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({empresa_id: parseInt(document.getElementById('est_empresa_id').value), nombre: document.getElementById('est_nombre').value}) });
             document.getElementById('formEstablecimiento').reset(); cargarTodo();
-        });
+        };
 
-        document.getElementById('formUsuario').addEventListener('submit', async (e) => {
+        // Submit Usuario
+        document.getElementById('formUsuario').onsubmit = async (e) => {
             e.preventDefault();
             const res = await fetch('/usuarios/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nombre_completo: document.getElementById('usr_nombre').value, email: document.getElementById('usr_email').value, password: document.getElementById('usr_password').value}) });
-            if(res.ok) { document.getElementById('formUsuario').reset(); cargarTodo(); }
-            else { alert("Ese email ya está registrado"); }
-        });
+            if(res.ok) { document.getElementById('formUsuario').reset(); cargarTodo(); } else { alert("Email ya existe"); }
+        };
+
+        // Submit Rol
+        document.getElementById('formRol').onsubmit = async (e) => {
+            e.preventDefault();
+            const res = await fetch('/roles/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({nombre: document.getElementById('rol_nombre').value}) });
+            if(res.ok) { document.getElementById('formRol').reset(); cargarTodo(); } else { alert("Ese rol ya existe"); }
+        };
+
+        // Submit Acceso
+        document.getElementById('formAcceso').onsubmit = async (e) => {
+            e.preventDefault();
+            await fetch('/accesos/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({usuario_id: parseInt(document.getElementById('acc_usuario_id').value), establecimiento_id: parseInt(document.getElementById('acc_establecimiento_id').value), rol_id: parseInt(document.getElementById('acc_rol_id').value)}) });
+            document.getElementById('formAcceso').reset(); cargarTodo();
+        };
 
         cargarTodo();
     </script>
