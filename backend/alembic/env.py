@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.realpath(os.path.join(os.path.dirname(__file__), '..'
 from app.core.db.database import Base
 from app.modules.empresa.models import Empresa, Establecimiento, Usuario, Rol, Acceso, Permiso, Configuracion
 from app.modules.catalogo.models import Insumo, Categoria, Producto, Receta
+from app.modules.ventas.models import Venta, DetalleVenta
 from app.core.config import settings
 
 config = context.config
