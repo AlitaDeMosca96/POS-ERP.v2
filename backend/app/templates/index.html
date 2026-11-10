@@ -11,7 +11,6 @@
         button { width: 100%; padding: 10px; background-color: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; font-weight: bold; }
         #error { color: red; font-size: 13px; margin-top: 10px; }
         
-        /* Estilos del Dashboard */
         #dashboard { display: none; width: 100%; height: 100vh; background: #f4f7f6; flex-direction: column; }
         .navbar { background: #2c3e50; color: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; }
         .main-content { display: flex; flex: 1; overflow: hidden; }
@@ -22,7 +21,6 @@
     </style>
 </head>
 <body>
-    <!-- PANTALLA DE LOGIN -->
     <div id="login" class="login-box">
         <h2>Ingreso al Sistema</h2>
         <input type="email" id="log_email" placeholder="Email">
@@ -31,7 +29,6 @@
         <div id="error"></div>
     </div>
 
-    <!-- PANTALLA DASHBOARD (Oculta inicialmente) -->
     <div id="dashboard">
         <div class="navbar">
             <h2>ERP Gastronómico</h2>
@@ -40,12 +37,12 @@
         <div class="main-content">
             <div class="sidebar">
                 <a onclick="mostrarSeccion('inicio')">🏠 Mi Espacio</a>
+                <a id="menu-saas" style="display:none; background:#d32f2f;" onclick="mostrarSeccion('saas')">👑 Administración SaaS</a>
                 <a onclick="mostrarSeccion('empresas')">🏢 Empresas y Locales</a>
-                <a onclick="mostrarSeccion('catalogo')">📦 Catálogo (Productos)</a>
-                <a onclick="mostrarSeccion('usuarios')">👤 Usuarios y Permisos</a>
+                <a onclick="mostrarSeccion('catalogo')">📦 Catálogo</a>
+                <a onclick="mostrarSeccion('usuarios')">👤 Usuarios</a>
             </div>
             <div class="content-area">
-                <!-- MI ESPACIO -->
                 <div id="sec-inicio">
                     <h2>👋 Hola, <span id="nombreEspacio"></span></h2>
                     <p>Este es tu espacio personal. Desde acá vas a poder ver tus horarios, fichajes y tareas pendientes.</p>
@@ -53,11 +50,18 @@
                         <h3>Estado del Sistema</h3>
                         <p>✅ Backend funcionando</p>
                         <p>✅ Base de datos conectada</p>
-                        <p>✅ Permisos configurados</p>
                     </div>
                 </div>
 
-                <!-- EMPRESAS -->
+                <div id="sec-saas" style="display:none;">
+                    <h2>👑 Panel de Control Global (SaaS)</h2>
+                    <p style="color: #d32f2f;"><b>Zona restringida:</b> Solo para administradores del sistema.</p>
+                    <table border="1" style="width:100%; text-align:left; border-collapse:collapse; margin-top:20px;">
+                        <thead><tr><th>Empresa</th><th>País</th><th>Acciones</th></tr></thead>
+                        <tbody id="tablaSaaS"></tbody>
+                    </table>
+                </div>
+
                 <div id="sec-empresas" style="display:none;">
                     <h2>🏢 Empresas y Locales</h2>
                     <form id="formEmpresa" style="margin-bottom: 20px;">
@@ -70,11 +74,10 @@
                     </table>
                 </div>
 
-                <!-- CATALOGO -->
                 <div id="sec-catalogo" style="display:none;">
                     <h2>📦 Catálogo de Productos</h2>
                     <form id="formProducto" style="margin-bottom: 20px; display:flex; gap:10px;">
-                        <input type="text" id="prod_nombre" placeholder="Nombre del Producto (Ej: Pizza)" required>
+                        <input type="text" id="prod_nombre" placeholder="Nombre del Producto" required>
                         <input type="number" id="prod_precio" placeholder="Precio" step="0.01" required>
                         <button type="submit" style="width:auto; padding: 8px 15px; background:#28a745;">Agregar Producto</button>
                     </form>
@@ -83,7 +86,6 @@
                     </table>
                 </div>
 
-                <!-- USUARIOS -->
                 <div id="sec-usuarios" style="display:none;">
                     <h2>👤 Usuarios del Sistema</h2>
                     <table border="1" style="width:100%; text-align:left; border-collapse:collapse;">
@@ -95,7 +97,6 @@
     </div>
 
     <script>
-        // LOGIN
         async function iniciarSesion() {
             const email = document.getElementById('log_email').value;
             const pass = document.getElementById('log_password').value;
@@ -107,6 +108,14 @@
                 const data = await res.json();
                 document.getElementById('nombreUser').innerText = data.nombre;
                 document.getElementById('nombreEspacio').innerText = data.nombre;
+                
+                // MAGIA: Si es SuperAdmin, mostramos el menú rojo
+                if (data.es_superadmin) {
+                    document.getElementById('menu-saas').style.display = 'block';
+                } else {
+                    document.getElementById('menu-saas').style.display = 'none';
+                }
+
                 document.getElementById('login').style.display = 'none';
                 document.getElementById('dashboard').style.display = 'flex';
                 cargarDatos();
@@ -119,19 +128,19 @@
             document.getElementById('dashboard').style.display = 'none';
             document.getElementById('login').style.display = 'block';
             document.getElementById('log_password').value = '';
+            document.getElementById('error').innerText = "";
         }
 
-        // NAVEGACION
         function mostrarSeccion(id) {
-            ['inicio', 'empresas', 'catalogo', 'usuarios'].forEach(s => {
+            ['inicio', 'saas', 'empresas', 'catalogo', 'usuarios'].forEach(s => {
                 document.getElementById('sec-' + s).style.display = s === id ? 'block' : 'none';
             });
         }
 
-        // CARGA DE DATOS
         async function cargarDatos() {
             const emp = await (await fetch('/empresas/')).json();
             document.getElementById('tablaEmpresas').innerHTML = emp.map(e => `<tr><td>${e.id}</td><td>${e.razon_social}</td></tr>`).join('');
+            document.getElementById('tablaSaaS').innerHTML = emp.map(e => `<tr><td>${e.razon_social}</td><td>${e.pais}</td><td><button style="width:auto; padding:4px 8px; background:#f44336;">Suspender</button></td></tr>`).join('');
 
             const prod = await (await fetch('/productos/')).json();
             document.getElementById('tablaProductos').innerHTML = prod.map(p => `<tr><td>${p.id}</td><td>${p.nombre}</td><td>$${p.precio_base}</td></tr>`).join('');
@@ -140,7 +149,6 @@
             document.getElementById('tablaUsuarios').innerHTML = usr.map(u => `<tr><td>${u.nombre_completo}</td><td>${u.email}</td></tr>`).join('');
         }
 
-        // FORMULARIOS
         document.getElementById('formEmpresa').onsubmit = async (e) => {
             e.preventDefault();
             await fetch('/empresas/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({razon_social: document.getElementById('emp_razon').value, nombre_comercial: document.getElementById('emp_nombre').value}) });

@@ -9,16 +9,13 @@ from passlib.context import CryptContext
 router = APIRouter(tags=["Modulo Empresa"])
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# LOGIN
 @router.post("/login")
 def login(datos: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == datos.get("email")).first()
-    if not usuario:
-        raise HTTPException(status_code=401, detail="Usuario no encontrado")
-    # Verificamos la contraseña
+    if not usuario: raise HTTPException(status_code=401, detail="Usuario no encontrado")
     if not pwd_context.verify(datos.get("password"), usuario.password_hash):
         raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    return {"status": "ok", "nombre": usuario.nombre_completo, "email": usuario.email}
+    return {"status": "ok", "nombre": usuario.nombre_completo, "email": usuario.email, "es_superadmin": usuario.es_superadmin}
 
 @router.post("/empresas/", response_model=EmpresaResponse)
 def crear_empresa(empresa_in: EmpresaCreate, db: Session = Depends(get_db)):
@@ -36,10 +33,7 @@ def listar_establecimientos(db: Session = Depends(get_db)): return db.query(Esta
 def crear_usuario(user_in: UsuarioCreate, db: Session = Depends(get_db)):
     existe = db.query(Usuario).filter(Usuario.email == user_in.email).first()
     if existe: raise HTTPException(status_code=400, detail="Email ya registrado")
-    
-    # ENCRIPTAMOS LA CONTRASEÑA REAL
     hash_real = pwd_context.hash(user_in.password)
-    
     nuevo = Usuario(email=user_in.email, nombre_completo=user_in.nombre_completo, password_hash=hash_real)
     db.add(nuevo); db.commit(); db.refresh(nuevo); return nuevo
 @router.get("/usuarios/", response_model=List[UsuarioResponse])

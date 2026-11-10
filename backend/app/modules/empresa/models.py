@@ -37,6 +37,7 @@ class Usuario(Base):
     nombre_completo = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
     activo = Column(Boolean, default=True)
+    es_superadmin = Column(Boolean, default=False) # NUEVO CAMPO
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
     deleted_at = Column(DateTime(timezone=True), nullable=True)
@@ -66,9 +67,9 @@ class Permiso(Base):
     __tablename__ = "permisos"
     id = Column(Integer, primary_key=True, index=True)
     rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
-    recurso = Column(String, nullable=False) # ej: 'empresa', 'pedido'
-    accion = Column(String, nullable=False)  # ej: 'ver', 'crear'
-    alcance = Column(String, default="propio") # propio, sector, empresa, grupo
+    recurso = Column(String, nullable=False)
+    accion = Column(String, nullable=False)
+    alcance = Column(String, default="propio")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     rol = relationship("Rol", back_populates="permisos")
 
