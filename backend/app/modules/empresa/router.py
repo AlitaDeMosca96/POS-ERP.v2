@@ -1,4 +1,4 @@
-ï»¿from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.db.database import get_db
@@ -18,8 +18,8 @@ def login(datos: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == datos.get("email")).first()
     if not usuario: raise HTTPException(status_code=401, detail="Usuario no encontrado")
     try:
-        if not verificar_password(datos.get("password"), usuario.password_hash): raise HTTPException(status_code=401, detail="ContraseÃ±a incorrecta")
-    except: raise HTTPException(status_code=401, detail="Error en contraseÃ±a")
+        if not verificar_password(datos.get("password"), usuario.password_hash): raise HTTPException(status_code=401, detail="Contraseña incorrecta")
+    except: raise HTTPException(status_code=401, detail="Error en contraseña")
 
     return {
         "status": "ok", 
@@ -39,7 +39,7 @@ def listar_empresas(db: Session = Depends(get_db)): return db.query(Empresa).fil
 @router.post("/establecimientos/", response_model=EstablecimientoResponse)
 def crear_establecimiento(est_in: EstablecimientoCreate, x_tenant_id: int = Header(...), db: Session = Depends(get_db)):
     nuevo = Establecimiento(tenant_id=x_tenant_id, nombre=est_in.nombre); db.add(nuevo); db.commit(); db.refresh(nuevo); return nuevo
-@router.get("/establecimientos/", response_model=List<EstablecimientoResponse>)
+@router.get("/establecimientos/", response_model=List[EstablecimientoResponse])
 def listar_establecimientos(x_tenant_id: int = Header(...), db: Session = Depends(get_db)): 
     return db.query(Establecimiento).filter(Establecimiento.tenant_id == x_tenant_id, Establecimiento.deleted_at == None).all()
 
