@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+ï»¿from fastapi import APIRouter, Depends, HTTPException, Header
 from sqlalchemy.orm import Session
 from typing import List
 from app.core.db.database import get_db
@@ -18,8 +18,8 @@ def login(datos: dict, db: Session = Depends(get_db)):
     usuario = db.query(Usuario).filter(Usuario.email == datos.get("email")).first()
     if not usuario: raise HTTPException(status_code=401, detail="Usuario no encontrado")
     try:
-        if not verificar_password(datos.get("password"), usuario.password_hash): raise HTTPException(status_code=401, detail="Contraseña incorrecta")
-    except: raise HTTPException(status_code=401, detail="Error en contraseña")
+        if not verificar_password(datos.get("password"), usuario.password_hash): raise HTTPException(status_code=401, detail="Password incorrecto")
+    except: raise HTTPException(status_code=401, detail="Error en password")
 
     return {
         "status": "ok", 
@@ -56,6 +56,6 @@ def listar_usuarios(x_tenant_id: int = Header(...), db: Session = Depends(get_db
 @router.post("/roles/", response_model=RolResponse)
 def crear_rol(rol_in: RolCreate, x_tenant_id: int = Header(...), db: Session = Depends(get_db)):
     nuevo = Rol(nombre=rol_in.nombre, tenant_id=x_tenant_id); db.add(nuevo); db.commit(); db.refresh(nuevo); return nuevo
-@router.get("/roles/", response_model=List<RolResponse>)
+@router.get("/roles/", response_model=List[RolResponse])
 def listar_roles(x_tenant_id: int = Header(...), db: Session = Depends(get_db)): 
     return db.query(Rol).filter(Rol.tenant_id == x_tenant_id, Rol.deleted_at == None).all()
