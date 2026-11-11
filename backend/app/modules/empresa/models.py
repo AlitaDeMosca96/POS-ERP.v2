@@ -15,7 +15,7 @@ class Empresa(Base):
 class Establecimiento(Base):
     __tablename__ = "establecimientos"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False) # Regla del Manual
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
     nombre = Column(String, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
     empresa = relationship("Empresa", back_populates="establecimientos")
@@ -23,8 +23,8 @@ class Establecimiento(Base):
 class Usuario(Base):
     __tablename__ = "usuarios"
     id = Column(Integer, primary_key=True, index=True)
-    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
-    establishment_id = Column(Integer, ForeignKey("establecimientos.id"), nullable=False)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=True) # SuperAdmin no tiene tenant fijo
+    establishment_id = Column(Integer, ForeignKey("establecimientos.id"), nullable=True)
     email = Column(String, unique=True, index=True, nullable=False)
     nombre_completo = Column(String, nullable=False)
     password_hash = Column(String, nullable=False)
@@ -45,4 +45,23 @@ class Acceso(Base):
     usuario_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
     establecimiento_id = Column(Integer, ForeignKey("establecimientos.id"), nullable=False)
     rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+
+class Permiso(Base):
+    __tablename__ = "permisos"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    rol_id = Column(Integer, ForeignKey("roles.id"), nullable=False)
+    recurso = Column(String, nullable=False)
+    accion = Column(String, nullable=False)
+    alcance = Column(String, default="propio")
+    deleted_at = Column(DateTime(timezone=True), nullable=True)
+    rol = relationship("Rol")
+
+class Configuracion(Base):
+    __tablename__ = "configuraciones"
+    id = Column(Integer, primary_key=True, index=True)
+    tenant_id = Column(Integer, ForeignKey("empresas.id"), nullable=False)
+    clave = Column(String, nullable=False)
+    valor = Column(String, nullable=False)
     deleted_at = Column(DateTime(timezone=True), nullable=True)
