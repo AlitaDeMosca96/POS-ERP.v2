@@ -1,8 +1,0 @@
-﻿REGLAS DEL PROYECTO POS+ERP GASTRONÓMICO — NO NEGOCIABLES
-1. OFFLINE-FIRST (D-005): el POS opera sin red. Sync idempotente.
-2. PERMISOS (D-027, D-073): deny by default.
-3. IDEMPOTENCIA: cobros, pagos y stock.
-4. NADA SE BORRA: soft delete con deleted_at.
-5. MULTI-TENANT: tenant_id y establishment_id.
-6. AUDITORÍA: autor, timestamp, valores, IP.
-7. NUNCA INVENTES: si no está en /docs/guia/, no lo hagas.
