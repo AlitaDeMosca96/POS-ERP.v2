@@ -2,6 +2,7 @@ export class CreateProductoDto {
   nombre: string;
   precio: number;
   costo: number;
-  stock: number; // <-- AGREGADO
+  stock: number;
   empresaId: string;
+  categoriaId?: string;
 }

@@ -1,5 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
+import { Categoria } from '../../categorias/entities/categoria.entity';
 
 @Entity('productos')
 export class Producto {
@@ -15,7 +16,7 @@ export class Producto {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   costo: number;
 
-  @Column({ type: 'int', default: 0 }) // <-- NUEVA COLUMNA
+  @Column({ type: 'int', default: 0 })
   stock: number;
 
   @Column({ type: 'boolean', default: true })
@@ -27,6 +28,13 @@ export class Producto {
 
   @Column('uuid')
   empresaId: string;
+
+  @ManyToOne(() => Categoria, { nullable: true })
+  @JoinColumn({ name: 'categoria_id' })
+  categoria: Categoria;
+
+  @Column('uuid', { nullable: true })
+  categoriaId: string;
 
   @CreateDateColumn()
   createdAt: Date;

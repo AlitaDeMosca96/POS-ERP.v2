@@ -3,24 +3,31 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+interface Categoria {
+  id: string;
+  nombre: string;
+}
+
 interface Producto {
   id: string;
   nombre: string;
   precio: number;
   costo: number;
   stock: number;
+  categoria?: Categoria;
 }
 
 export default function ProductosPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
+  const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Estados del formulario
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
   const [costo, setCosto] = useState('');
   const [stock, setStock] = useState('');
+  const [categoriaId, setCategoriaId] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -29,18 +36,44 @@ export default function ProductosPage() {
       router.push('/');
       return;
     }
-    cargarProductos();
+    cargarDatos();
   }, [router, token]);
 
-  const cargarProductos = () => {
-    fetch('http://localhost:3000/productos', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setProductos(data);
-        setLoading(false);
+  const cargarDatos = async () => {
+    try {
+      const [resProd, resCat] = await Promise.all([
+        fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } })
+      ]);
+      const prods = await resProd.json();
+      const cats = await resCat.json();
+      setProductos(prods);
+      setCategorias(cats);
+      if (cats.length > 0) setCategoriaId(cats[0].id);
+      setLoading(false);
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    }
+  };
+
+  const handleCrearCategoria = async () => {
+    const nombreCat = prompt('Ingrese el nombre de la nueva categoría:');
+    if (!nombreCat) return;
+
+    try {
+      const res = await fetch('http://localhost:3000/categorias', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ nombre: nombreCat })
       });
+      if (res.ok) {
+        alert('Categoría creada');
+        cargarDatos();
+      }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleCrearProducto = async (e: React.FormEvent) => {
@@ -51,28 +84,25 @@ export default function ProductosPage() {
       precio: Number(precio),
       costo: Number(costo),
       stock: Number(stock),
+      categoriaId: categoriaId || null,
     };
 
     try {
       const res = await fetch('http://localhost:3000/productos', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(nuevoProducto)
       });
 
       if (res.ok) {
         alert('Producto creado con éxito');
         setNombre(''); setPrecio(''); setCosto(''); setStock('');
-        cargarProductos(); // Recargamos la tabla
+        cargarDatos();
       } else {
-        alert('Error al crear el producto. Revisá la consola.');
+        alert('Error al crear el producto.');
       }
     } catch (error) {
       console.error(error);
-      alert('Error de conexión');
     }
   };
 
@@ -84,18 +114,33 @@ export default function ProductosPage() {
         
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Gestión de Productos</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">
-            Volver al Dashboard
-          </button>
+          <div className="flex gap-4">
+            <button onClick={handleCrearCategoria} className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded font-bold">
+              + Nueva Categoría
+            </button>
+            <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline py-2">
+              Volver al Dashboard
+            </button>
+          </div>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
           <h2 className="text-xl font-bold mb-4 text-gray-800">Agregar Nuevo Producto</h2>
-          <form onSubmit={handleCrearProducto} className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <form onSubmit={handleCrearProducto} className="grid grid-cols-1 md:grid-cols-6 gap-4">
             <input
               type="text" placeholder="Nombre" required value={nombre} onChange={e => setNombre(e.target.value)}
               className="border p-2 rounded text-gray-800"
             />
+            <select 
+              value={categoriaId} 
+              onChange={e => setCategoriaId(e.target.value)}
+              className="border p-2 rounded text-gray-800"
+            >
+              <option value="">Sin Categoría</option>
+              {categorias.map(cat => (
+                <option key={cat.id} value={cat.id}>{cat.nombre}</option>
+              ))}
+            </select>
             <input
               type="number" placeholder="Precio Venta" required value={precio} onChange={e => setPrecio(e.target.value)}
               className="border p-2 rounded text-gray-800"
@@ -119,6 +164,7 @@ export default function ProductosPage() {
             <thead>
               <tr className="bg-gray-50 text-gray-700 border-b">
                 <th className="p-4 font-semibold">Producto</th>
+                <th className="p-4 font-semibold">Categoría</th>
                 <th className="p-4 font-semibold">Costo</th>
                 <th className="p-4 font-semibold">Precio</th>
                 <th className="p-4 font-semibold">Stock</th>
@@ -128,6 +174,11 @@ export default function ProductosPage() {
               {productos.map(prod => (
                 <tr key={prod.id} className="border-b hover:bg-gray-50 text-gray-800">
                   <td className="p-4 font-medium">{prod.nombre}</td>
+                  <td className="p-4">
+                    <span className="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">
+                      {prod.categoria?.nombre || 'General'}
+                    </span>
+                  </td>
                   <td className="p-4 text-gray-500">${prod.costo}</td>
                   <td className="p-4 text-green-600 font-bold">${prod.precio}</td>
                   <td className="p-4">
@@ -137,11 +188,6 @@ export default function ProductosPage() {
                   </td>
                 </tr>
               ))}
-              {productos.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="p-4 text-center text-gray-500">No hay productos cargados</td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

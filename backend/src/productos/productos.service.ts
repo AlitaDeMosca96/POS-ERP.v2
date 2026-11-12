@@ -13,21 +13,30 @@ export class ProductosService {
   ) {}
 
   create(createProductoDto: CreateProductoDto) {
-    const producto = this.productoRepository.create(createProductoDto);
+    // ACÁ ESTÁ EL ARREGLO: Armamos la relación correctamente
+    const producto = this.productoRepository.create({
+      nombre: createProductoDto.nombre,
+      precio: createProductoDto.precio,
+      costo: createProductoDto.costo,
+      stock: createProductoDto.stock,
+      empresaId: createProductoDto.empresaId,
+      categoria: createProductoDto.categoriaId ? { id: createProductoDto.categoriaId } : undefined
+    });
+    
     return this.productoRepository.save(producto);
   }
 
   findAll(empresaId: string) {
     return this.productoRepository.find({ 
       where: { empresaId },
-      relations: { empresa: true } 
+      relations: { empresa: true, categoria: true } 
     });
   }
 
   findOne(id: string) {
     return this.productoRepository.findOne({ 
       where: { id },
-      relations: { empresa: true }
+      relations: { empresa: true, categoria: true }
     });
   }
 
