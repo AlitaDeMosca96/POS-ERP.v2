@@ -70,41 +70,47 @@ export default function DashboardPage() {
         </div>
       </nav>
 
-      <main className="p-8 max-w-6xl mx-auto">
+      <main className="p-8 max-w-7xl mx-auto">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
             <h2 className="text-3xl font-bold text-gray-800">Resumen del Día</h2>
             
-            <div className="flex gap-4 flex-wrap">
+            <div className="flex gap-3 flex-wrap">
+              <button 
+                onClick={() => router.push('/insumos')}
+                className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              >
+                Insumos
+              </button>
               <button 
                 onClick={() => router.push('/caja')}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >
-                Gestionar Caja
+                Caja
               </button>
               <button 
                 onClick={() => router.push('/mesas')}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >
-                Gestionar Mesas
+                Mesas
               </button>
               <button 
                 onClick={() => router.push('/historial')}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >
-                Historial de Ventas
+                Historial
               </button>
               <button 
                 onClick={() => router.push('/productos')}
-                className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+                className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >
-                Gestionar Productos
+                Productos
               </button>
               <button 
                 onClick={() => router.push('/pos')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >
-                + Ir al Punto de Venta
+                + Ir al POS
               </button>
             </div>
           </div>

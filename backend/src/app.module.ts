@@ -11,7 +11,9 @@ import { ProductosModule } from './productos/productos.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { MesasModule } from './mesas/mesas.module';
-import { CajasModule } from './cajas/cajas.module'; // <-- NUEVA LÍNEA
+import { CajasModule } from './cajas/cajas.module';
+import { InsumosModule } from './insumos/insumos.module'; // <-- NUEVA LÍNEA
+import { RecetasModule } from './recetas/recetas.module';
 
 @Module({
   imports: [
@@ -34,7 +36,9 @@ import { CajasModule } from './cajas/cajas.module'; // <-- NUEVA LÍNEA
     PedidosModule,
     CategoriasModule,
     MesasModule,
-    CajasModule, // <-- NUEVA LÍNEA
+    CajasModule,
+    InsumosModule,
+    RecetasModule, // <-- NUEVA LÍNEA
   ],
   controllers: [AppController],
   providers: [AppService],
