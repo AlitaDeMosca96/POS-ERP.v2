@@ -22,13 +22,10 @@ export default function DashboardPage() {
     setUsuario(JSON.parse(userStr));
 
     fetch('http://localhost:3000/pedidos', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
         if (res.status === 401) {
-          // Si expiró, borramos todo y volvemos al login SIN tirar error
           localStorage.removeItem('token');
           localStorage.removeItem('usuario');
           router.push('/');
@@ -79,6 +76,12 @@ export default function DashboardPage() {
             <h2 className="text-3xl font-bold text-gray-800">Resumen del Día</h2>
             
             <div className="flex gap-4 flex-wrap">
+              <button 
+                onClick={() => router.push('/caja')}
+                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+              >
+                Gestionar Caja
+              </button>
               <button 
                 onClick={() => router.push('/mesas')}
                 className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"

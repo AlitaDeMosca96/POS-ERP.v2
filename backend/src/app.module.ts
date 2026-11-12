@@ -11,6 +11,7 @@ import { ProductosModule } from './productos/productos.module';
 import { PedidosModule } from './pedidos/pedidos.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { MesasModule } from './mesas/mesas.module';
+import { CajasModule } from './cajas/cajas.module'; // <-- NUEVA LÍNEA
 
 @Module({
   imports: [
@@ -33,6 +34,7 @@ import { MesasModule } from './mesas/mesas.module';
     PedidosModule,
     CategoriasModule,
     MesasModule,
+    CajasModule, // <-- NUEVA LÍNEA
   ],
   controllers: [AppController],
   providers: [AppService],

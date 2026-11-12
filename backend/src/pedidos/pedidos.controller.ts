@@ -12,7 +12,8 @@ export class PedidosController {
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Request() req: any) {
     createPedidoDto.empresaId = req.user.empresaId; 
-    return this.pedidosService.create(createPedidoDto);
+    // ACÁ AGREGAMOS EL SEGUNDO PARÁMETRO (el ID del usuario que cobra)
+    return this.pedidosService.create(createPedidoDto, req.user.id); 
   }
 
   @Get()
@@ -20,13 +21,11 @@ export class PedidosController {
     return this.pedidosService.findAll(req.user.empresaId);
   }
 
-  // --- RUTA ESPECÍFICA ARRIBA ---
   @Get('mesa/:mesaId')
   findAbiertoByMesa(@Param('mesaId') mesaId: string, @Request() req: any) {
     return this.pedidosService.findAbiertoByMesa(mesaId, req.user.empresaId);
   }
 
-  // --- RUTA DINÁMICA ABAJO ---
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.pedidosService.findOne(id);

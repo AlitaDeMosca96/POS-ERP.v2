@@ -6,6 +6,7 @@ import { Repository } from 'typeorm';
 import { Pedido } from './entities/pedido.entity';
 import { Producto } from '../productos/entities/producto.entity';
 import { Mesa } from '../mesas/entities/mesa.entity';
+import { Caja } from '../cajas/entities/caja.entity';
 
 @Injectable()
 export class PedidosService {
@@ -16,9 +17,16 @@ export class PedidosService {
     private readonly productoRepository: Repository<Producto>,
     @InjectRepository(Mesa)
     private readonly mesaRepository: Repository<Mesa>,
+    @InjectRepository(Caja)
+    private readonly cajaRepository: Repository<Caja>,
   ) {}
 
-  async create(createPedidoDto: CreatePedidoDto) {
+  async create(createPedidoDto: CreatePedidoDto, usuarioId: string) { // <-- Recibe el usuarioId
+    // 1. Buscamos si el usuario tiene una caja abierta
+    const cajaAbierta = await this.cajaRepository.findOne({
+      where: { usuarioId, estado: 'ABIERTA' }
+    });
+
     if (createPedidoDto.pedidoId) {
       const pedidoViejo = await this.pedidoRepository.findOne({
         where: { id: createPedidoDto.pedidoId },
@@ -56,7 +64,8 @@ export class PedidosService {
       total: createPedidoDto.total,
       empresaId: createPedidoDto.empresaId,
       estado: createPedidoDto.estado || 'PAGADO',
-      mesaId: createPedidoDto.mesaId || undefined, // <-- GUARDAMOS LA COLUMNA DIRECTA
+      mesaId: createPedidoDto.mesaId || undefined,
+      cajaId: cajaAbierta ? cajaAbierta.id : undefined, // <-- LE ASIGNAMOS LA CAJA
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
       detalles: createPedidoDto.detalles.map(det => ({
         cantidad: det.cantidad,
@@ -67,6 +76,7 @@ export class PedidosService {
     return this.pedidoRepository.save(pedido);
   }
 
+  // ... (el resto de los métodos queda igual)
   findAll(empresaId: string) {
     return this.pedidoRepository.find({ 
       where: { empresaId },
@@ -93,7 +103,7 @@ export class PedidosService {
   async findAbiertoByMesa(mesaId: string, empresaId: string) {
     return this.pedidoRepository.findOne({
       where: {
-        mesaId: mesaId, // <-- BUSCAMOS POR LA COLUMNA DIRECTA
+        mesaId: mesaId,
         empresaId,
         estado: 'ABIERTO'
       },
