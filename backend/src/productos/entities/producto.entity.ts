@@ -15,6 +15,9 @@ export class Producto {
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   costo: number;
 
+  @Column({ type: 'int', default: 0 }) // <-- NUEVA COLUMNA
+  stock: number;
+
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 

@@ -6,18 +6,37 @@ import { useRouter } from 'next/navigation';
 export default function DashboardPage() {
   const router = useRouter();
   const [usuario, setUsuario] = useState<any>(null);
+  const [totalVentas, setTotalVentas] = useState(0);
+  const [cantidadVentas, setCantidadVentas] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Buscamos si hay un usuario y un token guardados
     const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('usuario');
 
     if (!token || !userStr) {
-      // Si no hay token, lo mandamos al login
       router.push('/');
-    } else {
-      setUsuario(JSON.parse(userStr));
+      return;
     }
+
+    setUsuario(JSON.parse(userStr));
+
+    fetch('http://localhost:3000/pedidos', {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    })
+      .then(res => res.json())
+      .then(data => {
+        const total = data.reduce((acc: number, pedido: any) => acc + Number(pedido.total), 0);
+        setTotalVentas(total);
+        setCantidadVentas(data.length);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setLoading(false);
+      });
   }, [router]);
 
   const handleLogout = () => {
@@ -26,44 +45,58 @@ export default function DashboardPage() {
     router.push('/');
   };
 
-  if (!usuario) return <div className="p-10 text-center">Cargando...</div>;
+  if (loading || !usuario) return <div className="p-10 text-center">Cargando...</div>;
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Barra superior */}
-      <nav className="bg-blue-600 p-4 text-white flex justify-between items-center">
+      <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
         <h1 className="text-xl font-bold">Mi ERP Gastronómico</h1>
         <div className="flex items-center gap-4">
-          <span className="text-sm">Hola, {usuario.nombre} ({usuario.rol})</span>
+          <span className="text-sm font-medium">Hola, {usuario.nombre} ({usuario.rol})</span>
           <button 
             onClick={handleLogout}
-            className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm"
+            className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm transition"
           >
             Cerrar Sesión
           </button>
         </div>
       </nav>
 
-      {/* Contenido principal */}
-      <main className="p-8">
-        <div className="bg-white p-6 rounded-lg shadow-md">
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Bienvenido al Sistema</h2>
-          <p className="text-gray-600">
-            Este es el panel principal. Acá vas a poder ver tus ventas, gestionar el stock y administrar tu local.
-          </p>
+      <main className="p-8 max-w-6xl mx-auto">
+        <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-3xl font-bold text-gray-800">Resumen del Día</h2>
+            
+            <div className="flex gap-4">
+              <button 
+                onClick={() => router.push('/historial')}
+                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+              >
+                Historial de Ventas
+              </button>
+              <button 
+                onClick={() => router.push('/productos')}
+                className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+              >
+                Gestionar Productos
+              </button>
+              <button 
+                onClick={() => router.push('/pos')}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+              >
+                + Ir al Punto de Venta
+              </button>
+            </div>
+          </div>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
-            <div className="bg-blue-50 p-4 rounded border border-blue-200">
-              <h3 className="font-bold text-blue-800">Ventas de Hoy</h3>
-              <p className="text-3xl font-light text-blue-600">$ 0.00</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <div className="bg-green-50 p-6 rounded-xl border border-green-200 shadow-sm">
+              <h3 className="font-bold text-green-800 text-lg">Ingresos Totales</h3>
+              <p className="text-4xl font-light text-green-600 mt-2">${totalVentas.toFixed(2)}</p>
             </div>
-            <div className="bg-green-50 p-4 rounded border border-green-200">
-              <h3 className="font-bold text-green-800">Mesas Ocupadas</h3>
-              <p className="text-3xl font-light text-green-600">0 / 20</p>
-            </div>
-            <div className="bg-purple-50 p-4 rounded border border-purple-200">
-              <h3 className="font-bold text-purple-800">Alertas de Stock</h3>
-              <p className="text-3xl font-light text-purple-600">0</p>
+            <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm">
+              <h3 className="font-bold text-blue-800 text-lg">Tickets Emitidos</h3>
+              <p className="text-4xl font-light text-blue-600 mt-2">{cantidadVentas}</p>
             </div>
           </div>
         </div>

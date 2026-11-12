@@ -7,6 +7,7 @@ interface Producto {
   id: string;
   nombre: string;
   precio: number;
+  stock: number; // <-- AGREGAMOS EL STOCK
 }
 
 interface ItemCarrito extends Producto {
@@ -27,14 +28,9 @@ export default function POSPage() {
     }
 
     fetch('http://localhost:3000/productos', {
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
+      headers: { Authorization: `Bearer ${token}` }
     })
-      .then(res => {
-        if(!res.ok) throw new Error('Error al cargar productos');
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
         setProductos(data);
         setLoading(false);
@@ -49,7 +45,16 @@ export default function POSPage() {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === producto.id);
       if (existe) {
+        // Validar que no supere el stock
+        if (existe.cantidad >= producto.stock) {
+          alert('No hay más stock de este producto');
+          return prev;
+        }
         return prev.map(item => item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item);
+      }
+      if (producto.stock <= 0) {
+        alert('Producto agotado');
+        return prev;
       }
       return [...prev, { ...producto, cantidad: 1 }];
     });
@@ -88,13 +93,16 @@ export default function POSPage() {
 
       if (res.ok) {
         alert('¡Venta guardada con éxito!');
-        setCarrito([]); // Vaciamos el ticket
+        setCarrito([]);
+        // Recargamos los productos para ver el stock actualizado
+        fetch('http://localhost:3000/productos', {
+          headers: { Authorization: `Bearer ${token}` }
+        }).then(r => r.json()).then(data => setProductos(data));
       } else {
         alert('Error al guardar la venta');
       }
     } catch (error) {
       console.error(error);
-      alert('Error de conexión');
     }
   };
 
@@ -102,7 +110,6 @@ export default function POSPage() {
 
   return (
     <div className="flex h-screen bg-gray-100">
-      {/* Panel Izquierdo: Catálogo de Productos */}
       <div className="w-2/3 p-6 overflow-y-auto border-r border-gray-300">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Punto de Venta</h1>
@@ -116,16 +123,19 @@ export default function POSPage() {
             <button 
               key={prod.id}
               onClick={() => agregarAlCarrito(prod)}
-              className="bg-white p-4 rounded-lg shadow hover:shadow-lg transition border border-gray-200 flex flex-col justify-between h-32"
+              disabled={prod.stock <= 0}
+              className={`p-4 rounded-lg shadow transition border flex flex-col justify-between h-32 ${prod.stock <= 0 ? 'bg-gray-200 opacity-50 cursor-not-allowed' : 'bg-white hover:shadow-lg border-gray-200'}`}
             >
-              <span className="font-bold text-gray-800 text-lg text-left">{prod.nombre}</span>
+              <div className="text-left w-full">
+                <span className="font-bold text-gray-800 text-lg block">{prod.nombre}</span>
+                <span className="text-sm text-gray-500">Stock: {prod.stock}</span>
+              </div>
               <span className="text-green-600 font-bold self-end text-xl">${prod.precio}</span>
             </button>
           ))}
         </div>
       </div>
 
-      {/* Panel Derecho: Carrito / Ticket */}
       <div className="w-1/3 bg-white shadow-xl flex flex-col">
         <div className="p-4 bg-gray-800 text-white">
           <h2 className="text-xl font-bold">Ticket Actual</h2>

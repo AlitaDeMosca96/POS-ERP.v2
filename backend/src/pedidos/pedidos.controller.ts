@@ -11,14 +11,14 @@ export class PedidosController {
 
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Request() req: any) {
-    // SOBRESCRIBIMOS EL ID: No confiamos en el frontend, lo sacamos del Token seguro
     createPedidoDto.empresaId = req.user.empresaId; 
     return this.pedidosService.create(createPedidoDto);
   }
 
   @Get()
-  findAll() {
-    return this.pedidosService.findAll();
+  findAll(@Request() req: any) {
+    // LE PASAMOS EL ID DE LA EMPRESA DEL TOKEN
+    return this.pedidosService.findAll(req.user.empresaId);
   }
 
   @Get(':id')

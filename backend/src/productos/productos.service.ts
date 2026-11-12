@@ -17,8 +17,11 @@ export class ProductosService {
     return this.productoRepository.save(producto);
   }
 
-  findAll() {
-    return this.productoRepository.find({ relations: { empresa: true } });
+  findAll(empresaId: string) {
+    return this.productoRepository.find({ 
+      where: { empresaId },
+      relations: { empresa: true } 
+    });
   }
 
   findOne(id: string) {
