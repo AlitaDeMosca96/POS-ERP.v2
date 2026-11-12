@@ -1,26 +1,35 @@
 import { Injectable } from '@nestjs/common';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
+import { Mesa } from './entities/mesa.entity';
 
 @Injectable()
 export class MesasService {
+  constructor(
+    @InjectRepository(Mesa)
+    private readonly mesaRepository: Repository<Mesa>,
+  ) {}
+
   create(createMesaDto: CreateMesaDto) {
-    return 'This action adds a new mesa';
+    const mesa = this.mesaRepository.create(createMesaDto);
+    return this.mesaRepository.save(mesa);
   }
 
-  findAll() {
-    return `This action returns all mesas`;
+  findAll(empresaId: string) {
+    return this.mesaRepository.find({ where: { empresaId } });
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} mesa`;
+  findOne(id: string) {
+    return this.mesaRepository.findOneBy({ id });
   }
 
-  update(id: number, updateMesaDto: UpdateMesaDto) {
-    return `This action updates a #${id} mesa`;
+  update(id: string, updateMesaDto: UpdateMesaDto) {
+    return this.mesaRepository.update(id, updateMesaDto);
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} mesa`;
+  remove(id: string) {
+    return this.mesaRepository.delete(id);
   }
 }

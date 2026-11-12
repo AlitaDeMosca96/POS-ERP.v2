@@ -8,13 +8,19 @@ interface Categoria {
   nombre: string;
 }
 
+interface Mesa {
+  id: string;
+  nombre: string;
+  estado: string;
+}
+
 interface Producto {
   id: string;
   nombre: string;
   precio: number;
   stock: number;
   categoriaId?: string;
-  categoria?: Categoria; // <-- Agregamos esto
+  categoria?: Categoria;
 }
 
 interface ItemCarrito extends Producto {
@@ -25,6 +31,9 @@ export default function POSPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
+  const [mesas, setMesas] = useState<Mesa[]>([]);
+  const [mesaActivaId, setMesaActivaId] = useState<string>('');
+  const [pedidoActualId, setPedidoActualId] = useState<string | null>(null);
   const [categoriaActiva, setCategoriaActiva] = useState<string>('ALL');
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,12 +47,14 @@ export default function POSPage() {
 
     const cargarDatos = async () => {
       try {
-        const [resProd, resCat] = await Promise.all([
+        const [resProd, resCat, resMesas] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } })
+          fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
         setCategorias(await resCat.json());
+        setMesas(await resMesas.json());
         setLoading(false);
       } catch (error) {
         console.error(error);
@@ -53,6 +64,45 @@ export default function POSPage() {
     
     cargarDatos();
   }, [router]);
+
+  const handleMesaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevaMesaId = e.target.value;
+    setMesaActivaId(nuevaMesaId);
+    setCarrito([]);
+    setPedidoActualId(null);
+
+    if (!nuevaMesaId) return;
+
+    const token = localStorage.getItem('token');
+    try {
+      const res = await fetch(`http://localhost:3000/pedidos/mesa/${nuevaMesaId}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (res.ok) {
+        const texto = await res.text();
+        if (texto) {
+          const pedidoAbierto = JSON.parse(texto);
+          
+          if (pedidoAbierto && pedidoAbierto.id) {
+            setPedidoActualId(pedidoAbierto.id);
+            
+            const itemsCarrito = pedidoAbierto.detalles.map((det: any) => ({
+              id: det.producto.id,
+              nombre: det.producto.nombre,
+              precio: Number(det.precioUnitario),
+              cantidad: Number(det.cantidad),
+              stock: 999, 
+            }));
+            
+            setCarrito(itemsCarrito);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error al buscar pedido de mesa", error);
+    }
+  };
 
   const agregarAlCarrito = (producto: Producto) => {
     setCarrito(prev => {
@@ -76,12 +126,43 @@ export default function POSPage() {
     return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
   };
 
-  const handleCobrar = async () => {
+  const handleCobrar = async (estadoFinal: 'PAGADO' | 'ABIERTO') => {
     const token = localStorage.getItem('token');
     if (!token) return;
 
+    // --- CASO ESPECIAL: LIBERAR MESA VACÍA ---
+    if (carrito.length === 0 && mesaActivaId && estadoFinal === 'PAGADO') {
+      try {
+        if (pedidoActualId) {
+          await fetch(`http://localhost:3000/pedidos/${pedidoActualId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+            body: JSON.stringify({ estado: 'PAGADO' })
+          });
+        }
+        await fetch(`http://localhost:3000/mesas/${mesaActivaId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ estado: 'LIBRE' })
+        });
+        alert('Mesa liberada correctamente');
+        setMesaActivaId('');
+        setPedidoActualId(null);
+        const resMesas = await fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } });
+        setMesas(await resMesas.json());
+        return;
+      } catch (error) {
+        console.error(error);
+        return;
+      }
+    }
+
+    // --- FLUJO NORMAL (GUARDAR O COBRAR) ---
     const pedidoData = {
+      pedidoId: pedidoActualId, // <-- ENVIAMOS EL ID SI ES UNA MESA ABIERTA QUE SE MODIFICA
       total: calcularTotal(),
+      estado: estadoFinal,
+      mesaId: mesaActivaId || null,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -97,12 +178,19 @@ export default function POSPage() {
       });
 
       if (res.ok) {
-        alert('¡Venta guardada con éxito!');
+        alert(estadoFinal === 'PAGADO' ? '¡Venta cobrada con éxito!' : 'Mesa guardada/modificada correctamente');
         setCarrito([]);
-        fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } })
-          .then(r => r.json()).then(data => setProductos(data));
+        setMesaActivaId('');
+        setPedidoActualId(null);
+        
+        const [resProd, resMesas] = await Promise.all([
+          fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setProductos(await resProd.json());
+        setMesas(await resMesas.json());
       } else {
-        alert('Error al guardar la venta');
+        alert('Error al guardar el pedido');
       }
     } catch (error) {
       console.error(error);
@@ -111,7 +199,6 @@ export default function POSPage() {
 
   if (loading) return <div className="p-10 text-center text-xl">Cargando catálogo...</div>;
 
-  // ACÁ ESTÁ EL ARREGLO: Validamos si tiene la relación o el ID directo
   const productosFiltrados = categoriaActiva === 'ALL' 
     ? productos 
     : productos.filter(p => p.categoriaId === categoriaActiva || p.categoria?.id === categoriaActiva);
@@ -161,18 +248,24 @@ export default function POSPage() {
                 <span className="text-green-600 font-bold self-end text-xl">${prod.precio}</span>
               </button>
             ))}
-            {productosFiltrados.length === 0 && (
-              <div className="col-span-full text-center text-gray-500 py-10">
-                No hay productos en esta categoría.
-              </div>
-            )}
           </div>
         </div>
       </div>
 
       <div className="w-1/3 bg-white shadow-xl flex flex-col">
-        <div className="p-4 bg-gray-800 text-white">
+        <div className="p-4 bg-gray-800 text-white flex justify-between items-center">
           <h2 className="text-xl font-bold">Ticket Actual</h2>
+          
+          <select 
+            value={mesaActivaId} 
+            onChange={handleMesaChange}
+            className="bg-gray-700 text-white p-1 rounded border border-gray-600 focus:outline-none"
+          >
+            <option value="">Mostrador</option>
+            {mesas.map(m => (
+              <option key={m.id} value={m.id}>{m.nombre} {m.estado === 'OCUPADA' ? '(Ocupada)' : ''}</option>
+            ))}
+          </select>
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
@@ -198,13 +291,24 @@ export default function POSPage() {
             <span>Total:</span>
             <span>${calcularTotal()}</span>
           </div>
-          <button 
-            className="w-full bg-green-600 text-white py-3 rounded-lg text-xl font-bold hover:bg-green-700 disabled:bg-gray-300"
-            disabled={carrito.length === 0}
-            onClick={handleCobrar}
-          >
-            Cobrar
-          </button>
+          
+          <div className="flex gap-2">
+            <button 
+              className="w-1/2 bg-yellow-500 text-white py-3 rounded-lg text-lg font-bold hover:bg-yellow-600 disabled:bg-gray-300"
+              // Quitamos la restricción de pedidoActualId !== null para permitir agregar más cosas
+              disabled={carrito.length === 0} 
+              onClick={() => handleCobrar('ABIERTO')}
+            >
+              Guardar Mesa
+            </button>
+            <button 
+              className="w-1/2 bg-green-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-green-700 disabled:bg-gray-300"
+              disabled={carrito.length === 0 && !mesaActivaId}
+              onClick={() => handleCobrar('PAGADO')}
+            >
+              {carrito.length === 0 && mesaActivaId ? 'Liberar Mesa' : 'Cobrar'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

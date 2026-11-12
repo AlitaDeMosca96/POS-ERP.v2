@@ -26,11 +26,22 @@ export default function DashboardPage() {
         Authorization: `Bearer ${token}`
       }
     })
-      .then(res => res.json())
+      .then(res => {
+        if (res.status === 401) {
+          // Si expiró, borramos todo y volvemos al login SIN tirar error
+          localStorage.removeItem('token');
+          localStorage.removeItem('usuario');
+          router.push('/');
+          return null; 
+        }
+        return res.json();
+      })
       .then(data => {
-        const total = data.reduce((acc: number, pedido: any) => acc + Number(pedido.total), 0);
-        setTotalVentas(total);
-        setCantidadVentas(data.length);
+        if (data && Array.isArray(data)) {
+          const total = data.reduce((acc: number, pedido: any) => acc + Number(pedido.total), 0);
+          setTotalVentas(total);
+          setCantidadVentas(data.length);
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -64,10 +75,16 @@ export default function DashboardPage() {
 
       <main className="p-8 max-w-6xl mx-auto">
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex justify-between items-center mb-8">
+          <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
             <h2 className="text-3xl font-bold text-gray-800">Resumen del Día</h2>
             
-            <div className="flex gap-4">
+            <div className="flex gap-4 flex-wrap">
+              <button 
+                onClick={() => router.push('/mesas')}
+                className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"
+              >
+                Gestionar Mesas
+              </button>
               <button 
                 onClick={() => router.push('/historial')}
                 className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg shadow transition text-lg"

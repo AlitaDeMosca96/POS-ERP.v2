@@ -17,10 +17,16 @@ export class PedidosController {
 
   @Get()
   findAll(@Request() req: any) {
-    // LE PASAMOS EL ID DE LA EMPRESA DEL TOKEN
     return this.pedidosService.findAll(req.user.empresaId);
   }
 
+  // --- RUTA ESPECÍFICA ARRIBA ---
+  @Get('mesa/:mesaId')
+  findAbiertoByMesa(@Param('mesaId') mesaId: string, @Request() req: any) {
+    return this.pedidosService.findAbiertoByMesa(mesaId, req.user.empresaId);
+  }
+
+  // --- RUTA DINÁMICA ABAJO ---
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.pedidosService.findOne(id);
