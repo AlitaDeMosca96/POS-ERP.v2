@@ -14,8 +14,8 @@ import { MesasModule } from './mesas/mesas.module';
 import { CajasModule } from './cajas/cajas.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RecetasModule } from './recetas/recetas.module';
-import { ProveedoresModule } from './proveedores/proveedores.module'; // <-- NUEVO
-import { ComprasModule } from './compras/compras.module';
+import { ProveedoresModule } from './proveedores/proveedores.module';
+import { ComprasModule } from './compras/compras.module'; // <-- NUEVO
 
 @Module({
   imports: [

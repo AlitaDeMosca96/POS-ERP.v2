@@ -1,34 +1,21 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ComprasService } from './compras.service';
 import { CreateCompraDto } from './dto/create-compra.dto';
-import { UpdateCompraDto } from './dto/update-compra.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('compras')
+@UseGuards(JwtAuthGuard)
 export class ComprasController {
   constructor(private readonly comprasService: ComprasService) {}
 
   @Post()
-  create(@Body() createCompraDto: CreateCompraDto) {
+  create(@Body() createCompraDto: CreateCompraDto, @Request() req: any) {
+    createCompraDto.empresaId = req.user.empresaId;
     return this.comprasService.create(createCompraDto);
   }
 
   @Get()
-  findAll() {
-    return this.comprasService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.comprasService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCompraDto: UpdateCompraDto) {
-    return this.comprasService.update(+id, updateCompraDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.comprasService.remove(+id);
+  findAll(@Request() req: any) {
+    return this.comprasService.findAll(req.user.empresaId);
   }
 }
