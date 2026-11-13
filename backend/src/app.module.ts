@@ -15,7 +15,8 @@ import { CajasModule } from './cajas/cajas.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { RecetasModule } from './recetas/recetas.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
-import { ComprasModule } from './compras/compras.module'; // <-- NUEVO
+import { ComprasModule } from './compras/compras.module';
+import { ModificadoresModule } from './modificadores/modificadores.module'; // <-- NUEVO
 
 @Module({
   imports: [
@@ -42,7 +43,8 @@ import { ComprasModule } from './compras/compras.module'; // <-- NUEVO
     InsumosModule,
     RecetasModule,
     ProveedoresModule,
-    ComprasModule, // <-- NUEVO
+    ComprasModule,
+    ModificadoresModule, // <-- NUEVO
   ],
   controllers: [AppController],
   providers: [AppService],

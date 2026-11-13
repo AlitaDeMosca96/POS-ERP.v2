@@ -20,7 +20,6 @@ export class PedidosController {
     return this.pedidosService.findAll(req.user.empresaId);
   }
 
-  // --- RUTAS PARA EL KDS (COCINA) ---
   @Get('cocina')
   findPendientesCocina(@Request() req: any) {
     return this.pedidosService.findPendientesCocina(req.user.empresaId);
@@ -30,7 +29,6 @@ export class PedidosController {
   marcarListo(@Param('id') id: string) {
     return this.pedidosService.marcarListo(id);
   }
-  // -----------------------------------
 
   @Get('mesa/:mesaId')
   findAbiertoByMesa(@Param('mesaId') mesaId: string, @Request() req: any) {

@@ -100,13 +100,14 @@ export class PedidosService {
       empresaId: createPedidoDto.empresaId,
       estado: createPedidoDto.estado || 'PAGADO',
       estadoCocina: 'PENDIENTE',
-      metodoPago: createPedidoDto.metodoPago || 'EFECTIVO', // <-- GUARDAMOS EL MÉTODO
+      metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
       mesaId: createPedidoDto.mesaId || undefined,
       cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
       detalles: createPedidoDto.detalles.map(det => ({
         cantidad: det.cantidad,
         precioUnitario: det.precioUnitario,
+        notas: det.notas, // <-- GUARDAMOS LAS NOTAS
         producto: { id: det.productoId },
       }))
     });

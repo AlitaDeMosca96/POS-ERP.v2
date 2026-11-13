@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 interface PedidoDetalle {
   id: string;
   cantidad: number;
+  notas?: string;
   producto: { nombre: string };
 }
 
@@ -44,12 +45,8 @@ export default function CocinaPage() {
       }
     };
 
-    // Cargamos al entrar
     cargarPedidos();
-
-    // Configuramos un intervalo para que se actualice solo cada 5 segundos
     const interval = setInterval(cargarPedidos, 5000);
-
     return () => clearInterval(interval);
   }, [router, token]);
 
@@ -59,8 +56,6 @@ export default function CocinaPage() {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });
-      
-      // Lo sacamos de la pantalla inmediatamente
       setPedidos(prev => prev.filter(p => p.id !== id));
     } catch (error) {
       console.error(error);
@@ -96,9 +91,17 @@ export default function CocinaPage() {
               <div className="p-4 flex-1">
                 <ul className="space-y-3">
                   {pedido.detalles.map(det => (
-                    <li key={det.id} className="flex gap-3 text-xl border-b border-gray-700 pb-2">
-                      <span className="font-bold text-green-400">{det.cantidad}x</span>
-                      <span>{det.producto.nombre}</span>
+                    <li key={det.id} className="flex flex-col gap-1 text-xl border-b border-gray-700 pb-2">
+                      <div className="flex gap-3">
+                        <span className="font-bold text-green-400">{det.cantidad}x</span>
+                        <span>{det.producto.nombre}</span>
+                      </div>
+                      {/* MOSTRAMOS LAS NOTAS DE LOS MODIFICADORES */}
+                      {det.notas && (
+                        <div className="text-sm font-bold text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded inline-block w-fit">
+                          ⚠ {det.notas}
+                        </div>
+                      )}
                     </li>
                   ))}
                 </ul>
