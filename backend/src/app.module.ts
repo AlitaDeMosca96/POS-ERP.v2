@@ -13,7 +13,9 @@ import { CategoriasModule } from './categorias/categorias.module';
 import { MesasModule } from './mesas/mesas.module';
 import { CajasModule } from './cajas/cajas.module';
 import { InsumosModule } from './insumos/insumos.module';
-import { RecetasModule } from './recetas/recetas.module'; // <-- NUEVA LÍNEA
+import { RecetasModule } from './recetas/recetas.module';
+import { ProveedoresModule } from './proveedores/proveedores.module'; // <-- NUEVO
+import { ComprasModule } from './compras/compras.module';
 
 @Module({
   imports: [
@@ -38,7 +40,9 @@ import { RecetasModule } from './recetas/recetas.module'; // <-- NUEVA LÍNEA
     MesasModule,
     CajasModule,
     InsumosModule,
-    RecetasModule, // <-- NUEVA LÍNEA
+    RecetasModule,
+    ProveedoresModule,
+    ComprasModule, // <-- NUEVO
   ],
   controllers: [AppController],
   providers: [AppService],
