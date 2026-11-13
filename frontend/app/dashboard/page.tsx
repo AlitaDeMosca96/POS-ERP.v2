@@ -97,6 +97,7 @@ export default function DashboardPage() {
               <button onClick={() => router.push('/mesas')} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Mesas</button>
               <button onClick={() => router.push('/historial')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Historial</button>
               <button onClick={() => router.push('/productos')} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Productos</button>
+              <button onClick={() => router.push('/kiosco')} className="bg-slate-900 hover:bg-black text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Kiosco</button>
               <button onClick={() => router.push('/pos')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">+ Ir al POS</button>
             </div>
           </div>

@@ -102,11 +102,8 @@ export class PedidosService {
       estadoCocina: 'PENDIENTE',
       metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
       mesaId: createPedidoDto.mesaId || undefined,
-      
-      // --- ACÁ ESTÁ EL ARREGLO DEL CLIENTE ---
       clienteId: createPedidoDto.clienteId || undefined,
       cliente: createPedidoDto.clienteId ? { id: createPedidoDto.clienteId } : undefined,
-      
       cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
       detalles: createPedidoDto.detalles.map(det => ({
@@ -131,8 +128,7 @@ export class PedidosService {
     return this.pedidoRepository.find({
       where: { 
         empresaId, 
-        estadoCocina: 'PENDIENTE',
-        estado: 'ABIERTO'
+        estadoCocina: 'PENDIENTE' // <-- Quitamos el filtro de estado ABIERTO
       },
       relations: { mesa: true, detalles: { producto: true } },
       order: { createdAt: 'ASC' }
