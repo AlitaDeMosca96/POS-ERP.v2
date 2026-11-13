@@ -12,8 +12,8 @@ import { PedidosModule } from './pedidos/pedidos.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { MesasModule } from './mesas/mesas.module';
 import { CajasModule } from './cajas/cajas.module';
-import { InsumosModule } from './insumos/insumos.module'; // <-- NUEVA LÍNEA
-import { RecetasModule } from './recetas/recetas.module';
+import { InsumosModule } from './insumos/insumos.module';
+import { RecetasModule } from './recetas/recetas.module'; // <-- NUEVA LÍNEA
 
 @Module({
   imports: [

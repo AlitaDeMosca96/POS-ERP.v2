@@ -1,9 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
 import { RecetasService } from './recetas.service';
 import { CreateRecetaDto } from './dto/create-receta.dto';
-import { UpdateRecetaDto } from './dto/update-receta.dto';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('recetas')
+@UseGuards(JwtAuthGuard)
 export class RecetasController {
   constructor(private readonly recetasService: RecetasService) {}
 
@@ -12,23 +13,13 @@ export class RecetasController {
     return this.recetasService.create(createRecetaDto);
   }
 
-  @Get()
-  findAll() {
-    return this.recetasService.findAll();
-  }
-
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.recetasService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateRecetaDto: UpdateRecetaDto) {
-    return this.recetasService.update(+id, updateRecetaDto);
+  @Get('producto/:productoId')
+  findByProducto(@Param('productoId') productoId: string) {
+    return this.recetasService.findByProducto(productoId);
   }
 
   @Delete(':id')
   remove(@Param('id') id: string) {
-    return this.recetasService.remove(+id);
+    return this.recetasService.remove(id);
   }
 }

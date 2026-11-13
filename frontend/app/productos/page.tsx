@@ -17,17 +17,38 @@ interface Producto {
   categoria?: Categoria;
 }
 
+interface Insumo {
+  id: string;
+  nombre: string;
+  unidadMedida: string;
+  costo: number;
+}
+
+interface RecetaItem {
+  id: string;
+  cantidad: number;
+  insumo: Insumo;
+}
+
 export default function ProductosPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // Estados del formulario de Producto
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
   const [costo, setCosto] = useState('');
   const [stock, setStock] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
+
+  // Estados para el Modal de Recetas
+  const [insumos, setInsumos] = useState<Insumo[]>([]);
+  const [productoReceta, setProductoReceta] = useState<Producto | null>(null);
+  const [recetaActual, setRecetaActual] = useState<RecetaItem[]>([]);
+  const [nuevoInsumoId, setNuevoInsumoId] = useState('');
+  const [nuevaCantidad, setNuevaCantidad] = useState('1');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -41,14 +62,15 @@ export default function ProductosPage() {
 
   const cargarDatos = async () => {
     try {
-      const [resProd, resCat] = await Promise.all([
+      const [resProd, resCat, resIns] = await Promise.all([
         fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('http://localhost:3000/insumos', { headers: { Authorization: `Bearer ${token}` } })
       ]);
-      const prods = await resProd.json();
+      setProductos(await resProd.json());
       const cats = await resCat.json();
-      setProductos(prods);
       setCategorias(cats);
+      setInsumos(await resIns.json());
       if (cats.length > 0) setCategoriaId(cats[0].id);
       setLoading(false);
     } catch (error) {
@@ -100,6 +122,66 @@ export default function ProductosPage() {
         cargarDatos();
       } else {
         alert('Error al crear el producto.');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  // --- LÓGICA DE RECETAS ---
+  const abrirModalReceta = async (prod: Producto) => {
+    setProductoReceta(prod);
+    try {
+      const res = await fetch(`http://localhost:3000/recetas/producto/${prod.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setRecetaActual(await res.json());
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleAgregarInsumo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!productoReceta || !nuevoInsumoId) return;
+
+    try {
+      const res = await fetch('http://localhost:3000/recetas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          productoId: productoReceta.id,
+          insumoId: nuevoInsumoId,
+          cantidad: Number(nuevaCantidad)
+        })
+      });
+
+      if (res.ok) {
+        // Recargamos la receta para ver el nuevo insumo
+        const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setRecetaActual(await resRec.json());
+        setNuevaCantidad('1');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleEliminarInsumo = async (recetaId: string) => {
+    if (!confirm('¿Quitar este insumo de la receta?')) return;
+    try {
+      await fetch(`http://localhost:3000/recetas/${recetaId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      // Recargamos
+      if (productoReceta) {
+        const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setRecetaActual(await resRec.json());
       }
     } catch (error) {
       console.error(error);
@@ -165,9 +247,8 @@ export default function ProductosPage() {
               <tr className="bg-gray-50 text-gray-700 border-b">
                 <th className="p-4 font-semibold">Producto</th>
                 <th className="p-4 font-semibold">Categoría</th>
-                <th className="p-4 font-semibold">Costo</th>
                 <th className="p-4 font-semibold">Precio</th>
-                <th className="p-4 font-semibold">Stock</th>
+                <th className="p-4 font-semibold text-center">Receta</th>
               </tr>
             </thead>
             <tbody>
@@ -179,12 +260,14 @@ export default function ProductosPage() {
                       {prod.categoria?.nombre || 'General'}
                     </span>
                   </td>
-                  <td className="p-4 text-gray-500">${prod.costo}</td>
                   <td className="p-4 text-green-600 font-bold">${prod.precio}</td>
-                  <td className="p-4">
-                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${prod.stock > 5 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
-                      {prod.stock} un.
-                    </span>
+                  <td className="p-4 text-center">
+                    <button 
+                      onClick={() => abrirModalReceta(prod)}
+                      className="bg-teal-100 text-teal-700 hover:bg-teal-200 px-3 py-1 rounded font-bold text-sm transition"
+                    >
+                      Gestionar Insumos
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -192,6 +275,66 @@ export default function ProductosPage() {
           </table>
         </div>
       </div>
+
+      {/* MODAL DE RECETA (ESCANDALLO) */}
+      {productoReceta && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
+            <div className="bg-teal-700 text-white p-4 flex justify-between items-center">
+              <h3 className="text-xl font-bold">Receta: {productoReceta.nombre}</h3>
+              <button onClick={() => setProductoReceta(null)} className="text-teal-200 hover:text-white font-bold text-2xl">&times;</button>
+            </div>
+            
+            <div className="p-6">
+              <form onSubmit={handleAgregarInsumo} className="flex gap-2 mb-6 items-end">
+                <div className="flex-1">
+                  <label className="block text-sm text-gray-600 mb-1">Insumo</label>
+                  <select 
+                    value={nuevoInsumoId} 
+                    onChange={e => setNuevoInsumoId(e.target.value)}
+                    className="w-full border p-2 rounded text-gray-800"
+                    required
+                  >
+                    <option value="">Seleccione un insumo...</option>
+                    {insumos.map(ins => (
+                      <option key={ins.id} value={ins.id}>{ins.nombre} ({ins.unidadMedida})</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="w-24">
+                  <label className="block text-sm text-gray-600 mb-1">Cantidad</label>
+                  <input
+                    type="number" step="0.01" required value={nuevaCantidad} onChange={e => setNuevaCantidad(e.target.value)}
+                    className="w-full border p-2 rounded text-gray-800"
+                  />
+                </div>
+                <button type="submit" className="bg-teal-600 text-white font-bold px-4 py-2 rounded hover:bg-teal-700 h-[42px]">
+                  Agregar
+                </button>
+              </form>
+
+              <h4 className="font-bold text-gray-700 mb-2">Insumos actuales:</h4>
+              {recetaActual.length === 0 ? (
+                <p className="text-gray-500 text-sm italic bg-gray-50 p-4 rounded text-center">Este producto todavía no tiene insumos asignados.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {recetaActual.map(item => (
+                    <li key={item.id} className="flex justify-between items-center bg-gray-50 border p-3 rounded">
+                      <span className="font-medium text-gray-800">{item.insumo.nombre}</span>
+                      <div className="flex items-center gap-4">
+                        <span className="text-sm text-gray-600">{item.cantidad} {item.insumo.unidadMedida.toLowerCase()}</span>
+                        <button onClick={() => handleEliminarInsumo(item.id)} className="text-red-500 hover:text-red-700 font-bold">
+                          &times;
+                        </button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
