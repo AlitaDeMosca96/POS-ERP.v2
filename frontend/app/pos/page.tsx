@@ -2,57 +2,39 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import TicketModal from '../../components/TicketModal'; // <-- IMPORTAMOS EL TICKET
 
-interface Categoria {
-  id: string;
-  nombre: string;
-}
-
-interface Mesa {
-  id: string;
-  nombre: string;
-  estado: string;
-}
-
-interface Modificador {
-  id: string;
-  nombre: string;
-  precioExtra: number;
-}
-
-interface Producto {
-  id: string;
-  nombre: string;
-  precio: number;
-  stock: number;
-  categoriaId?: string;
-}
-
-interface ItemCarrito extends Producto {
-  cantidad: number;
-  notas?: string;
-}
+interface Categoria { id: string; nombre: string; }
+interface Mesa { id: string; nombre: string; estado: string; }
+interface Cliente { id: string; nombre: string; }
+interface Modificador { id: string; nombre: string; precioExtra: number; }
+interface Producto { id: string; nombre: string; precio: number; stock: number; categoriaId?: string; }
+interface ItemCarrito extends Producto { cantidad: number; notas?: string; }
 
 export default function POSPage() {
   const router = useRouter();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [mesas, setMesas] = useState<Mesa[]>([]);
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  
   const [mesaActivaId, setMesaActivaId] = useState<string>('');
+  const [clienteActivoId, setClienteActivoId] = useState<string>('');
   const [pedidoActualId, setPedidoActualId] = useState<string | null>(null);
   const [categoriaActiva, setCategoriaActiva] = useState<string>('ALL');
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // ESTADOS PARA MODIFICADORES
   const [productoModificando, setProductoModificando] = useState<Producto | null>(null);
   const [modificadoresDisponibles, setModificadoresDisponibles] = useState<Modificador[]>([]);
   const [modificadoresSeleccionados, setModificadoresSeleccionados] = useState<Modificador[]>([]);
 
-  // ESTADOS PARA EL MODAL DE PAGO
   const [modalPagoAbierto, setModalPagoAbierto] = useState(false);
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'>('EFECTIVO');
   const [montoRecibido, setMontoRecibido] = useState<string>('');
+
+  // ESTADO PARA EL TICKET
+  const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -64,14 +46,16 @@ export default function POSPage() {
 
     const cargarDatos = async () => {
       try {
-        const [resProd, resCat, resMesas] = await Promise.all([
+        const [resProd, resCat, resMesas, resCli] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
           fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('http://localhost:3000/clientes', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
         setCategorias(await resCat.json());
         setMesas(await resMesas.json());
+        setClientes(await resCli.json());
         setLoading(false);
       } catch (error) {
         console.error(error);
@@ -118,7 +102,6 @@ export default function POSPage() {
     }
   };
 
-  // --- LÓGICA DE SELECCIÓN DE PRODUCTOS ---
   const handleProductoClick = async (producto: Producto) => {
     try {
       const res = await fetch(`http://localhost:3000/modificadores/producto/${producto.id}`, {
@@ -127,12 +110,10 @@ export default function POSPage() {
       const mods = await res.json();
 
       if (mods.length > 0) {
-        // Si tiene modificadores, abrimos el modal
         setProductoModificando(producto);
         setModificadoresDisponibles(mods);
         setModificadoresSeleccionados([]);
       } else {
-        // Si no tiene, lo agregamos directo
         agregarAlCarrito(producto, producto.precio, '');
       }
     } catch (error) {
@@ -143,35 +124,27 @@ export default function POSPage() {
 
   const toggleModificador = (mod: Modificador) => {
     const existe = modificadoresSeleccionados.find(m => m.id === mod.id);
-    if (existe) {
-      setModificadoresSeleccionados(modificadoresSeleccionados.filter(m => m.id !== mod.id));
-    } else {
-      setModificadoresSeleccionados([...modificadoresSeleccionados, mod]);
-    }
+    if (existe) setModificadoresSeleccionados(modificadoresSeleccionados.filter(m => m.id !== mod.id));
+    else setModificadoresSeleccionados([...modificadoresSeleccionados, mod]);
   };
 
   const confirmarModificadores = () => {
     if (!productoModificando) return;
-
     const precioExtraTotal = modificadoresSeleccionados.reduce((acc, mod) => acc + Number(mod.precioExtra), 0);
     const precioFinal = Number(productoModificando.precio) + precioExtraTotal;
     const notas = modificadoresSeleccionados.map(m => m.nombre).join(', ');
-
     agregarAlCarrito(productoModificando, precioFinal, notas);
     setProductoModificando(null);
   };
 
   const agregarAlCarrito = (producto: Producto, precioFinal: number, notas: string) => {
     setCarrito(prev => {
-      // Buscamos si ya existe el mismo producto con las mismas notas
       const existeIndex = prev.findIndex(item => item.id === producto.id && item.notas === notas);
-      
       if (existeIndex >= 0) {
         const nuevoCarrito = [...prev];
         nuevoCarrito[existeIndex].cantidad += 1;
         return nuevoCarrito;
       }
-      
       return [...prev, { ...producto, precio: precioFinal, cantidad: 1, notas }];
     });
   };
@@ -180,7 +153,6 @@ export default function POSPage() {
     return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
   };
 
-  // --- LÓGICA DE COBRO ---
   const abrirModalCobro = () => {
     if (carrito.length === 0 && mesaActivaId) {
       liberarMesaVacia();
@@ -228,6 +200,7 @@ export default function POSPage() {
       estado: 'PAGADO',
       metodoPago: metodoPago,
       mesaId: mesaActivaId || null,
+      clienteId: clienteActivoId || null,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -244,9 +217,12 @@ export default function POSPage() {
       });
 
       if (res.ok) {
-        alert('¡Venta cobrada con éxito!');
+        const ventaData = await res.json(); // <-- ATRAPAMOS LA VENTA GUARDADA
+        setVentaExitosa(ventaData); // <-- ABRIMOS EL TICKET
+        
         setCarrito([]);
         setMesaActivaId('');
+        setClienteActivoId('');
         setPedidoActualId(null);
         setModalPagoAbierto(false);
         
@@ -270,6 +246,7 @@ export default function POSPage() {
       total: calcularTotal(),
       estado: 'ABIERTO',
       mesaId: mesaActivaId || null,
+      clienteId: clienteActivoId || null,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -289,6 +266,7 @@ export default function POSPage() {
         alert('Mesa guardada/modificada correctamente');
         setCarrito([]);
         setMesaActivaId('');
+        setClienteActivoId('');
         setPedidoActualId(null);
         const [resProd, resMesas] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
@@ -316,7 +294,7 @@ export default function POSPage() {
     <div className="flex h-screen bg-gray-100">
       <div className="w-2/3 flex flex-col border-r border-gray-300">
         
-        <div className="bg-white p-4 shadow-sm flex gap-2 overflow-x-auto">
+        <div className="bg-white p-4 shadow-sm flex gap-2 overflow-x-auto no-print">
           <button
             onClick={() => setCategoriaActiva('ALL')}
             className={`px-4 py-2 rounded-full font-bold whitespace-nowrap transition ${categoriaActiva === 'ALL' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
@@ -334,7 +312,7 @@ export default function POSPage() {
           ))}
         </div>
 
-        <div className="p-6 overflow-y-auto flex-1">
+        <div className="p-6 overflow-y-auto flex-1 no-print">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-800">Punto de Venta</h1>
             <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">
@@ -360,20 +338,35 @@ export default function POSPage() {
         </div>
       </div>
 
-      <div className="w-1/3 bg-white shadow-xl flex flex-col">
-        <div className="p-4 bg-gray-800 text-white flex justify-between items-center">
-          <h2 className="text-xl font-bold">Ticket Actual</h2>
+      <div className="w-1/3 bg-white shadow-xl flex flex-col no-print">
+        <div className="p-4 bg-gray-800 text-white flex flex-col gap-2">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold">Ticket Actual</h2>
+          </div>
           
-          <select 
-            value={mesaActivaId} 
-            onChange={handleMesaChange}
-            className="bg-gray-700 text-white p-1 rounded border border-gray-600 focus:outline-none"
-          >
-            <option value="">Mostrador</option>
-            {mesas.map(m => (
-              <option key={m.id} value={m.id}>{m.nombre} {m.estado === 'OCUPADA' ? '(Ocupada)' : ''}</option>
-            ))}
-          </select>
+          <div className="flex gap-2">
+            <select 
+              value={mesaActivaId} 
+              onChange={handleMesaChange}
+              className="w-1/2 bg-gray-700 text-white p-1 rounded border border-gray-600 focus:outline-none text-sm"
+            >
+              <option value="">Mostrador</option>
+              {mesas.map(m => (
+                <option key={m.id} value={m.id}>{m.nombre} {m.estado === 'OCUPADA' ? '(Ocupada)' : ''}</option>
+              ))}
+            </select>
+
+            <select 
+              value={clienteActivoId} 
+              onChange={e => setClienteActivoId(e.target.value)}
+              className="w-1/2 bg-gray-700 text-white p-1 rounded border border-gray-600 focus:outline-none text-sm"
+            >
+              <option value="">Consumidor Final</option>
+              {clientes.map(c => (
+                <option key={c.id} value={c.id}>{c.nombre}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         <div className="flex-1 p-4 overflow-y-auto">
@@ -422,7 +415,7 @@ export default function POSPage() {
 
       {/* MODAL DE MODIFICADORES */}
       {productoModificando && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-blue-600 text-white p-4">
               <h3 className="text-xl font-bold">Opciones para: {productoModificando.nombre}</h3>
@@ -448,26 +441,16 @@ export default function POSPage() {
             </div>
 
             <div className="p-4 bg-gray-50 border-t flex gap-3">
-              <button 
-                onClick={() => setProductoModificando(null)}
-                className="w-1/2 bg-gray-300 text-gray-800 font-bold py-2 rounded hover:bg-gray-400"
-              >
-                Cancelar
-              </button>
-              <button 
-                onClick={confirmarModificadores}
-                className="w-1/2 bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700"
-              >
-                Agregar al Ticket
-              </button>
+              <button onClick={() => setProductoModificando(null)} className="w-1/2 bg-gray-300 text-gray-800 font-bold py-2 rounded hover:bg-gray-400">Cancelar</button>
+              <button onClick={confirmarModificadores} className="w-1/2 bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700">Agregar al Ticket</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL DE PAGO (Queda igual) */}
+      {/* MODAL DE PAGO */}
       {modalPagoAbierto && (
-        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-green-600 text-white p-4 text-center">
               <h3 className="text-2xl font-bold">Cobrar Ticket</h3>
@@ -502,6 +485,13 @@ export default function POSPage() {
           </div>
         </div>
       )}
+
+      {/* MODAL DEL TICKET */}
+      <TicketModal 
+        isOpen={!!ventaExitosa} 
+        onClose={() => setVentaExitosa(null)} 
+        venta={ventaExitosa} 
+      />
 
     </div>
   );

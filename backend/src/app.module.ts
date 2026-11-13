@@ -18,7 +18,8 @@ import { ProveedoresModule } from './proveedores/proveedores.module';
 import { ComprasModule } from './compras/compras.module';
 import { ModificadoresModule } from './modificadores/modificadores.module';
 import { ReportesModule } from './reportes/reportes.module';
-import { ClientesModule } from './clientes/clientes.module'; // <-- NUEVO
+import { ClientesModule } from './clientes/clientes.module';
+import { ReservasModule } from './reservas/reservas.module'; // <-- NUEVO
 
 @Module({
   imports: [
@@ -48,7 +49,8 @@ import { ClientesModule } from './clientes/clientes.module'; // <-- NUEVO
     ComprasModule,
     ModificadoresModule,
     ReportesModule,
-    ClientesModule, // <-- NUEVO
+    ClientesModule,
+    ReservasModule, // <-- NUEVO
   ],
   controllers: [AppController],
   providers: [AppService],

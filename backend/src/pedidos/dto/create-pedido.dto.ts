@@ -2,7 +2,7 @@ export class CreatePedidoDetalleDto {
   productoId: string;
   cantidad: number;
   precioUnitario: number;
-  notas?: string; // <-- NUEVO
+  notas?: string;
 }
 
 export class CreatePedidoDto {
@@ -10,6 +10,7 @@ export class CreatePedidoDto {
   total: number;
   empresaId: string;
   mesaId?: string;
+  clienteId?: string; // <-- NUEVO
   estado?: string;
   estadoCocina?: string;
   metodoPago?: string;

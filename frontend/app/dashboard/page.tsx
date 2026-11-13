@@ -85,6 +85,7 @@ export default function DashboardPage() {
             <h2 className="text-3xl font-bold text-gray-800">Tablero de Control</h2>
             
             <div className="flex gap-2 flex-wrap justify-end">
+              <button onClick={() => router.push('/reservas')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Reservas</button>
               <button onClick={() => router.push('/clientes')} className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Clientes</button>
               <button onClick={() => router.push('/compras')} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Compras</button>
               <button onClick={() => router.push('/proveedores')} className="bg-amber-700 hover:bg-amber-800 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Proveedores</button>
@@ -167,7 +168,6 @@ export default function DashboardPage() {
                 </div>
               )}
             </div>
-
           </div>
 
         </div>

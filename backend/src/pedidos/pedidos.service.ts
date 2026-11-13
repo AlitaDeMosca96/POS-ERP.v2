@@ -102,12 +102,17 @@ export class PedidosService {
       estadoCocina: 'PENDIENTE',
       metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
       mesaId: createPedidoDto.mesaId || undefined,
+      
+      // --- ACÁ ESTÁ EL ARREGLO DEL CLIENTE ---
+      clienteId: createPedidoDto.clienteId || undefined,
+      cliente: createPedidoDto.clienteId ? { id: createPedidoDto.clienteId } : undefined,
+      
       cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
       detalles: createPedidoDto.detalles.map(det => ({
         cantidad: det.cantidad,
         precioUnitario: det.precioUnitario,
-        notas: det.notas, // <-- GUARDAMOS LAS NOTAS
+        notas: det.notas,
         producto: { id: det.productoId },
       }))
     });
@@ -117,7 +122,7 @@ export class PedidosService {
   findAll(empresaId: string) {
     return this.pedidoRepository.find({ 
       where: { empresaId },
-      relations: { empresa: true, mesa: true, detalles: { producto: true } },
+      relations: { empresa: true, mesa: true, cliente: true, detalles: { producto: true } },
       order: { createdAt: 'DESC' }
     });
   }
@@ -142,7 +147,7 @@ export class PedidosService {
   findOne(id: string) {
     return this.pedidoRepository.findOne({ 
       where: { id },
-      relations: { empresa: true, mesa: true, detalles: { producto: true } }
+      relations: { empresa: true, mesa: true, cliente: true, detalles: { producto: true } }
     });
   }
 
