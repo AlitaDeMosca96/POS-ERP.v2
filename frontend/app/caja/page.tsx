@@ -10,11 +10,35 @@ interface Caja {
   fechaApertura: string;
 }
 
+interface Movimiento {
+  id: string;
+  tipo: string;
+  monto: number;
+  motivo: string;
+  fecha: string;
+}
+
+interface Resumen {
+  caja: Caja;
+  movimientos: Movimiento[];
+  ingresos: number;
+  sangrias: number;
+  saldoEsperado: number;
+}
+
 export default function CajaPage() {
   const router = useRouter();
-  const [cajaAbierta, setCajaAbierta] = useState<Caja | null>(null);
+  const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
-  const [montoInput, setMontoInput] = useState('');
+  
+  // Estados para Apertura/Cierre
+  const [montoApertura, setMontoApertura] = useState('');
+  const [montoCierre, setMontoCierre] = useState('');
+
+  // Estados para Movimientos
+  const [movTipo, setMovTipo] = useState('SANGRIA');
+  const [movMonto, setMovMonto] = useState('');
+  const [movMotivo, setMovMotivo] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
@@ -35,10 +59,28 @@ export default function CajaPage() {
       if (res.ok) {
         const texto = await res.text();
         if (texto && texto !== 'null') {
-          setCajaAbierta(JSON.parse(texto));
+          const caja = JSON.parse(texto);
+          cargarResumen(caja.id);
         } else {
-          setCajaAbierta(null);
+          setResumen(null);
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
+      }
+    } catch (error) {
+      console.error(error);
+      setLoading(false);
+    }
+  };
+
+  const cargarResumen = async (cajaId: string) => {
+    try {
+      const res = await fetch(`http://localhost:3000/cajas/${cajaId}/resumen`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setResumen(await res.json());
       }
       setLoading(false);
     } catch (error) {
@@ -53,16 +95,13 @@ export default function CajaPage() {
       const res = await fetch('http://localhost:3000/cajas/apertura', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ saldoInicial: Number(montoInput) })
+        body: JSON.stringify({ saldoInicial: Number(montoApertura) })
       });
 
       if (res.ok) {
         alert('Caja abierta con éxito');
-        setMontoInput('');
+        setMontoApertura('');
         verificarCaja();
-      } else {
-        const errorData = await res.json();
-        alert(errorData.message || 'Error al abrir caja');
       }
     } catch (error) {
       console.error(error);
@@ -71,19 +110,52 @@ export default function CajaPage() {
 
   const handleCerrarCaja = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!cajaAbierta) return;
+    if (!resumen) return;
+
+    const diferencia = Number(montoCierre) - resumen.saldoEsperado;
+    let msj = '¿Estás seguro de cerrar la caja?';
+    if (diferencia < 0) msj = `¡ATENCIÓN! Hay un FALTANTE de $${Math.abs(diferencia)}. ¿Cerrar igual?`;
+    if (diferencia > 0) msj = `Hay un SOBRANTE de $${diferencia}. ¿Cerrar igual?`;
+
+    if (!confirm(msj)) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/cajas/${cajaAbierta.id}/cierre`, {
+      const res = await fetch(`http://localhost:3000/cajas/${resumen.caja.id}/cierre`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ saldoFinal: Number(montoInput) })
+        body: JSON.stringify({ saldoFinal: Number(montoCierre) })
       });
 
       if (res.ok) {
         alert('Caja cerrada con éxito');
-        setMontoInput('');
+        setMontoCierre('');
         verificarCaja();
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleRegistrarMovimiento = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resumen) return;
+
+    try {
+      const res = await fetch('http://localhost:3000/cajas/movimientos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({
+          tipo: movTipo,
+          monto: Number(movMonto),
+          motivo: movMotivo,
+          cajaId: resumen.caja.id
+        })
+      });
+
+      if (res.ok) {
+        setMovMonto('');
+        setMovMotivo('');
+        cargarResumen(resumen.caja.id); // Recargamos para ver el movimiento y el nuevo saldo
       }
     } catch (error) {
       console.error(error);
@@ -93,67 +165,116 @@ export default function CajaPage() {
   if (loading) return <div className="p-10 text-center">Verificando estado de la caja...</div>;
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8 flex items-center justify-center">
-      <div className="w-full max-w-md bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+    <div className="min-h-screen bg-gray-100 p-8">
+      <div className="max-w-6xl mx-auto space-y-6">
         
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Gestión de Caja</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline text-sm">
-            Volver
+          <h1 className="text-3xl font-bold text-gray-800">Gestión de Caja</h1>
+          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">
+            Volver al Dashboard
           </button>
         </div>
 
-        {cajaAbierta ? (
-          <div>
-            <div className="bg-green-50 text-green-800 p-4 rounded-lg mb-6 border border-green-200 text-center">
-              <p className="font-bold text-lg">Caja Abierta</p>
-              <p className="text-sm">Saldo inicial: ${cajaAbierta.saldoInicial}</p>
-              <p className="text-xs text-green-600 mt-1">Desde: {new Date(cajaAbierta.fechaApertura).toLocaleString()}</p>
-            </div>
-
-            <form onSubmit={handleCerrarCaja} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Monto Final en Efectivo (Arqueo)</label>
-                <input
-                  type="number"
-                  required
-                  value={montoInput}
-                  onChange={e => setMontoInput(e.target.value)}
-                  className="w-full border p-2 rounded text-gray-800 focus:ring-2 focus:ring-red-500"
-                  placeholder="Ej: 15000"
-                />
-              </div>
-              <button type="submit" className="w-full bg-red-600 text-white font-bold p-3 rounded hover:bg-red-700 transition">
-                Cerrar Caja
-              </button>
-            </form>
-          </div>
-        ) : (
-          <div>
-            <div className="bg-gray-50 text-gray-600 p-4 rounded-lg mb-6 border border-gray-200 text-center">
+        {!resumen ? (
+          <div className="max-w-md mx-auto bg-white p-8 rounded-xl shadow-lg border border-gray-200">
+            <div className="bg-gray-50 text-gray-600 p-4 rounded-lg mb-6 text-center border border-gray-200">
               <p className="font-bold text-lg">Caja Cerrada</p>
               <p className="text-sm">No hay un turno activo</p>
             </div>
-
             <form onSubmit={handleAbrirCaja} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Monto Inicial (Efectivo para vuelto)</label>
                 <input
-                  type="number"
-                  required
-                  value={montoInput}
-                  onChange={e => setMontoInput(e.target.value)}
-                  className="w-full border p-2 rounded text-gray-800 focus:ring-2 focus:ring-green-500"
+                  type="number" required value={montoApertura} onChange={e => setMontoApertura(e.target.value)}
+                  className="w-full border p-3 rounded text-gray-800 focus:ring-2 focus:ring-green-500"
                   placeholder="Ej: 5000"
                 />
               </div>
-              <button type="submit" className="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition">
+              <button type="submit" className="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition text-lg">
                 Abrir Caja
               </button>
             </form>
           </div>
-        )}
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* COLUMNA IZQUIERDA: ACCIONES */}
+            <div className="lg:col-span-1 space-y-6">
+              
+              {/* ESTADO DE CAJA */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 className="text-xl font-bold text-green-700 mb-4 border-b pb-2">Caja Abierta</h2>
+                <div className="space-y-2 text-gray-600">
+                  <p className="flex justify-between"><span>Saldo Inicial:</span> <span className="font-bold">${resumen.caja.saldoInicial}</span></p>
+                  <p className="flex justify-between text-blue-600"><span>Ingresos:</span> <span className="font-bold">+${resumen.ingresos}</span></p>
+                  <p className="flex justify-between text-red-600"><span>Sangrías:</span> <span className="font-bold">-${resumen.sangrias}</span></p>
+                  <div className="border-t pt-2 mt-2">
+                    <p className="flex justify-between text-xl font-bold text-gray-800">
+                      <span>En Caja:</span> <span>${resumen.saldoEsperado}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
 
+              {/* MOVIMIENTOS */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h2 className="text-lg font-bold text-gray-800 mb-4">Registrar Movimiento</h2>
+                <form onSubmit={handleRegistrarMovimiento} className="space-y-3">
+                  <select value={movTipo} onChange={e => setMovTipo(e.target.value)} className="w-full border p-2 rounded text-gray-800">
+                    <option value="SANGRIA">Sangría (Retiro)</option>
+                    <option value="INGRESO">Ingreso (Agregar Efectivo)</option>
+                  </select>
+                  <input type="number" placeholder="Monto" required value={movMonto} onChange={e => setMovMonto(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
+                  <input type="text" placeholder="Motivo (Ej: Pago proveedor)" required value={movMotivo} onChange={e => setMovMotivo(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
+                  <button type="submit" className="w-full bg-gray-800 text-white font-bold p-2 rounded hover:bg-gray-900">
+                    Guardar Movimiento
+                  </button>
+                </form>
+              </div>
+
+              {/* CIERRE DE CAJA */}
+              <div className="bg-white p-6 rounded-xl shadow-sm border border-red-200">
+                <h2 className="text-lg font-bold text-red-700 mb-4">Cierre de Caja (Arqueo)</h2>
+                <form onSubmit={handleCerrarCaja} className="space-y-3">
+                  <label className="text-sm text-gray-600 block">Contá el efectivo físico y poné el total:</label>
+                  <input type="number" required value={montoCierre} onChange={e => setMontoCierre(e.target.value)} className="w-full border p-2 rounded text-gray-800 focus:ring-2 focus:ring-red-500" placeholder="Monto contado" />
+                  <button type="submit" className="w-full bg-red-600 text-white font-bold p-2 rounded hover:bg-red-700">
+                    Cerrar Caja
+                  </button>
+                </form>
+              </div>
+
+            </div>
+
+            {/* COLUMNA DERECHA: HISTORIAL DE MOVIMIENTOS */}
+            <div className="lg:col-span-2">
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6">
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Historial del Turno</h2>
+                {resumen.movimientos.length === 0 ? (
+                  <p className="text-gray-500 text-center mt-10">No hay movimientos registrados todavía.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {resumen.movimientos.map(mov => (
+                      <li key={mov.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
+                        <div>
+                          <p className={`font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>
+                            {mov.tipo === 'INGRESO' ? 'Ingreso' : 'Sangría'}
+                          </p>
+                          <p className="text-sm text-gray-600">{mov.motivo}</p>
+                          <p className="text-xs text-gray-400">{new Date(mov.fecha).toLocaleTimeString()}</p>
+                        </div>
+                        <span className={`text-xl font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>
+                          {mov.tipo === 'INGRESO' ? '+' : '-'}${mov.monto}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+          </div>
+        )}
       </div>
     </div>
   );
