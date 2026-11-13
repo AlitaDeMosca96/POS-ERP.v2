@@ -108,15 +108,7 @@ export default function POSPage() {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === producto.id);
       if (existe) {
-        if (existe.cantidad >= producto.stock) {
-          alert('No hay más stock de este producto');
-          return prev;
-        }
         return prev.map(item => item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item);
-      }
-      if (producto.stock <= 0) {
-        alert('Producto agotado');
-        return prev;
       }
       return [...prev, { ...producto, cantidad: 1 }];
     });
@@ -130,7 +122,6 @@ export default function POSPage() {
     const token = localStorage.getItem('token');
     if (!token) return;
 
-    // --- CASO ESPECIAL: LIBERAR MESA VACÍA ---
     if (carrito.length === 0 && mesaActivaId && estadoFinal === 'PAGADO') {
       try {
         if (pedidoActualId) {
@@ -157,9 +148,8 @@ export default function POSPage() {
       }
     }
 
-    // --- FLUJO NORMAL (GUARDAR O COBRAR) ---
     const pedidoData = {
-      pedidoId: pedidoActualId, // <-- ENVIAMOS EL ID SI ES UNA MESA ABIERTA QUE SE MODIFICA
+      pedidoId: pedidoActualId,
       total: calcularTotal(),
       estado: estadoFinal,
       mesaId: mesaActivaId || null,
@@ -238,8 +228,8 @@ export default function POSPage() {
               <button 
                 key={prod.id}
                 onClick={() => agregarAlCarrito(prod)}
-                disabled={prod.stock <= 0}
-                className={`p-4 rounded-lg shadow transition border flex flex-col justify-between h-32 ${prod.stock <= 0 ? 'bg-gray-200 opacity-50 cursor-not-allowed' : 'bg-white hover:shadow-lg border-gray-200'}`}
+                // SE QUITÓ EL DISABLED PARA PERMITIR VENDER PLATOS CON RECETA (STOCK 0)
+                className="p-4 rounded-lg shadow transition border border-gray-200 flex flex-col justify-between h-32 bg-white hover:shadow-lg"
               >
                 <div className="text-left w-full">
                   <span className="font-bold text-gray-800 text-lg block">{prod.nombre}</span>
@@ -295,7 +285,6 @@ export default function POSPage() {
           <div className="flex gap-2">
             <button 
               className="w-1/2 bg-yellow-500 text-white py-3 rounded-lg text-lg font-bold hover:bg-yellow-600 disabled:bg-gray-300"
-              // Quitamos la restricción de pedidoActualId !== null para permitir agregar más cosas
               disabled={carrito.length === 0} 
               onClick={() => handleCobrar('ABIERTO')}
             >

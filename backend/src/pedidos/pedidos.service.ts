@@ -7,6 +7,8 @@ import { Pedido } from './entities/pedido.entity';
 import { Producto } from '../productos/entities/producto.entity';
 import { Mesa } from '../mesas/entities/mesa.entity';
 import { Caja } from '../cajas/entities/caja.entity';
+import { Receta } from '../recetas/entities/receta.entity';
+import { Insumo } from '../insumos/entities/insumo.entity';
 
 @Injectable()
 export class PedidosService {
@@ -19,36 +21,72 @@ export class PedidosService {
     private readonly mesaRepository: Repository<Mesa>,
     @InjectRepository(Caja)
     private readonly cajaRepository: Repository<Caja>,
+    @InjectRepository(Receta)
+    private readonly recetaRepository: Repository<Receta>,
+    @InjectRepository(Insumo)
+    private readonly insumoRepository: Repository<Insumo>,
   ) {}
 
-  async create(createPedidoDto: CreatePedidoDto, usuarioId: string) { // <-- Recibe el usuarioId
-    // 1. Buscamos si el usuario tiene una caja abierta
+  async create(createPedidoDto: CreatePedidoDto, usuarioId: string) {
     const cajaAbierta = await this.cajaRepository.findOne({
       where: { usuarioId, estado: 'ABIERTA' }
     });
 
     if (createPedidoDto.pedidoId) {
+      // REVERTIMOS EL STOCK VIEJO
       const pedidoViejo = await this.pedidoRepository.findOne({
         where: { id: createPedidoDto.pedidoId },
         relations: { detalles: { producto: true } }
       });
       if (pedidoViejo) {
         for (const det of pedidoViejo.detalles) {
-          const producto = await this.productoRepository.findOneBy({ id: det.producto.id });
-          if (producto) {
-            producto.stock += det.cantidad;
-            await this.productoRepository.save(producto);
+          const recetaVieja = await this.recetaRepository.find({
+            where: { producto: { id: det.producto.id } },
+            relations: { insumo: true }
+          });
+          
+          if (recetaVieja.length > 0) {
+             for (const item of recetaVieja) {
+               const insumo = await this.insumoRepository.findOneBy({ id: item.insumo.id });
+               if (insumo) {
+                 insumo.stock += (Number(item.cantidad) * det.cantidad);
+                 await this.insumoRepository.save(insumo);
+               }
+             }
+          } else {
+             const producto = await this.productoRepository.findOneBy({ id: det.producto.id });
+             if (producto) {
+               producto.stock += det.cantidad;
+               await this.productoRepository.save(producto);
+             }
           }
         }
         await this.pedidoRepository.delete(createPedidoDto.pedidoId);
       }
     }
 
+    // DESCONTAMOS EL STOCK NUEVO
     for (const det of createPedidoDto.detalles) {
-      const producto = await this.productoRepository.findOneBy({ id: det.productoId });
-      if (producto) {
-        producto.stock = producto.stock - det.cantidad;
-        await this.productoRepository.save(producto);
+      const receta = await this.recetaRepository.find({ 
+        where: { producto: { id: det.productoId } },
+        relations: { insumo: true }
+      });
+
+      if (receta.length > 0) {
+        for (const item of receta) {
+          // Usamos item.insumo.id (que es el objeto real)
+          const insumo = await this.insumoRepository.findOneBy({ id: item.insumo.id });
+          if (insumo) {
+            insumo.stock = insumo.stock - (Number(item.cantidad) * det.cantidad);
+            await this.insumoRepository.save(insumo);
+          }
+        }
+      } else {
+        const producto = await this.productoRepository.findOneBy({ id: det.productoId });
+        if (producto) {
+          producto.stock = producto.stock - det.cantidad;
+          await this.productoRepository.save(producto);
+        }
       }
     }
 
@@ -65,7 +103,7 @@ export class PedidosService {
       empresaId: createPedidoDto.empresaId,
       estado: createPedidoDto.estado || 'PAGADO',
       mesaId: createPedidoDto.mesaId || undefined,
-      cajaId: cajaAbierta ? cajaAbierta.id : undefined, // <-- LE ASIGNAMOS LA CAJA
+      cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
       detalles: createPedidoDto.detalles.map(det => ({
         cantidad: det.cantidad,
@@ -76,7 +114,6 @@ export class PedidosService {
     return this.pedidoRepository.save(pedido);
   }
 
-  // ... (el resto de los métodos queda igual)
   findAll(empresaId: string) {
     return this.pedidoRepository.find({ 
       where: { empresaId },

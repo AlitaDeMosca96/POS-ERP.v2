@@ -13,15 +13,18 @@ export class RecetasService {
   ) {}
 
   create(createRecetaDto: CreateRecetaDto) {
-    const receta = this.recetaRepository.create(createRecetaDto);
+    const receta = this.recetaRepository.create({
+      producto: { id: createRecetaDto.productoId },
+      insumo: { id: createRecetaDto.insumoId },
+      cantidad: createRecetaDto.cantidad
+    });
     return this.recetaRepository.save(receta);
   }
 
-  // Buscar todos los insumos de un producto específico
   findByProducto(productoId: string) {
     return this.recetaRepository.find({
-      where: { productoId },
-      relations: { insumo: true } // Traemos los datos del insumo (nombre, unidad, etc.)
+      where: { producto: { id: productoId } }, // <-- BUSCAMOS POR LA RELACIÓN
+      relations: { insumo: true }
     });
   }
 

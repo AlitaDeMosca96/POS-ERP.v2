@@ -36,14 +36,12 @@ export default function ProductosPage() {
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // Estados del formulario de Producto
   const [nombre, setNombre] = useState('');
   const [precio, setPrecio] = useState('');
   const [costo, setCosto] = useState('');
   const [stock, setStock] = useState('');
   const [categoriaId, setCategoriaId] = useState('');
 
-  // Estados para el Modal de Recetas
   const [insumos, setInsumos] = useState<Insumo[]>([]);
   const [productoReceta, setProductoReceta] = useState<Producto | null>(null);
   const [recetaActual, setRecetaActual] = useState<RecetaItem[]>([]);
@@ -128,7 +126,6 @@ export default function ProductosPage() {
     }
   };
 
-  // --- LÓGICA DE RECETAS ---
   const abrirModalReceta = async (prod: Producto) => {
     setProductoReceta(prod);
     try {
@@ -143,7 +140,10 @@ export default function ProductosPage() {
 
   const handleAgregarInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productoReceta || !nuevoInsumoId) return;
+    if (!productoReceta || !nuevoInsumoId) {
+      alert("Por favor, seleccioná un insumo válido.");
+      return;
+    }
 
     try {
       const res = await fetch('http://localhost:3000/recetas', {
@@ -157,15 +157,18 @@ export default function ProductosPage() {
       });
 
       if (res.ok) {
-        // Recargamos la receta para ver el nuevo insumo
         const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRecetaActual(await resRec.json());
         setNuevaCantidad('1');
+      } else {
+        const errorData = await res.json();
+        alert(`Error del servidor: ${errorData.message || 'No se pudo agregar'}`);
       }
     } catch (error) {
       console.error(error);
+      alert('Error de red al conectar con el servidor');
     }
   };
 
@@ -176,7 +179,6 @@ export default function ProductosPage() {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
-      // Recargamos
       if (productoReceta) {
         const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
           headers: { Authorization: `Bearer ${token}` }
@@ -247,7 +249,9 @@ export default function ProductosPage() {
               <tr className="bg-gray-50 text-gray-700 border-b">
                 <th className="p-4 font-semibold">Producto</th>
                 <th className="p-4 font-semibold">Categoría</th>
+                <th className="p-4 font-semibold">Costo</th>
                 <th className="p-4 font-semibold">Precio</th>
+                <th className="p-4 font-semibold">Stock</th>
                 <th className="p-4 font-semibold text-center">Receta</th>
               </tr>
             </thead>
@@ -260,7 +264,13 @@ export default function ProductosPage() {
                       {prod.categoria?.nombre || 'General'}
                     </span>
                   </td>
+                  <td className="p-4 text-gray-500">${prod.costo}</td>
                   <td className="p-4 text-green-600 font-bold">${prod.precio}</td>
+                  <td className="p-4">
+                    <span className={`px-3 py-1 rounded-full text-sm font-bold ${prod.stock > 5 ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700'}`}>
+                      {prod.stock} un.
+                    </span>
+                  </td>
                   <td className="p-4 text-center">
                     <button 
                       onClick={() => abrirModalReceta(prod)}
@@ -276,7 +286,6 @@ export default function ProductosPage() {
         </div>
       </div>
 
-      {/* MODAL DE RECETA (ESCANDALLO) */}
       {productoReceta && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl overflow-hidden">
@@ -320,9 +329,13 @@ export default function ProductosPage() {
                 <ul className="space-y-2">
                   {recetaActual.map(item => (
                     <li key={item.id} className="flex justify-between items-center bg-gray-50 border p-3 rounded">
-                      <span className="font-medium text-gray-800">{item.insumo.nombre}</span>
+                      <span className="font-medium text-gray-800">
+                        {item.insumo?.nombre || 'Insumo no encontrado'}
+                      </span>
                       <div className="flex items-center gap-4">
-                        <span className="text-sm text-gray-600">{item.cantidad} {item.insumo.unidadMedida.toLowerCase()}</span>
+                        <span className="text-sm text-gray-600">
+                          {item.cantidad} {item.insumo?.unidadMedida.toLowerCase() || 'un.'}
+                        </span>
                         <button onClick={() => handleEliminarInsumo(item.id)} className="text-red-500 hover:text-red-700 font-bold">
                           &times;
                         </button>
