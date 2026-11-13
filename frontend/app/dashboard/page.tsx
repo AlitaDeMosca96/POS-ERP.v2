@@ -77,6 +77,12 @@ export default function DashboardPage() {
             
             <div className="flex gap-3 flex-wrap">
               <button 
+                onClick={() => router.push('/cocina')}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
+              >
+                Pantalla Cocina
+              </button>
+              <button 
                 onClick={() => router.push('/insumos')}
                 className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
               >

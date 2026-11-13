@@ -5,10 +5,11 @@ export class CreatePedidoDetalleDto {
 }
 
 export class CreatePedidoDto {
-  pedidoId?: string; // <-- Nuevo
+  pedidoId?: string;
   total: number;
   empresaId: string;
   mesaId?: string;
   estado?: string;
+  estadoCocina?: string; // <-- NUEVO
   detalles: CreatePedidoDetalleDto[];
 }

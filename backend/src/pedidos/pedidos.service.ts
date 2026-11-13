@@ -33,7 +33,6 @@ export class PedidosService {
     });
 
     if (createPedidoDto.pedidoId) {
-      // REVERTIMOS EL STOCK VIEJO
       const pedidoViejo = await this.pedidoRepository.findOne({
         where: { id: createPedidoDto.pedidoId },
         relations: { detalles: { producto: true } }
@@ -65,7 +64,6 @@ export class PedidosService {
       }
     }
 
-    // DESCONTAMOS EL STOCK NUEVO
     for (const det of createPedidoDto.detalles) {
       const receta = await this.recetaRepository.find({ 
         where: { producto: { id: det.productoId } },
@@ -74,7 +72,6 @@ export class PedidosService {
 
       if (receta.length > 0) {
         for (const item of receta) {
-          // Usamos item.insumo.id (que es el objeto real)
           const insumo = await this.insumoRepository.findOneBy({ id: item.insumo.id });
           if (insumo) {
             insumo.stock = insumo.stock - (Number(item.cantidad) * det.cantidad);
@@ -102,6 +99,7 @@ export class PedidosService {
       total: createPedidoDto.total,
       empresaId: createPedidoDto.empresaId,
       estado: createPedidoDto.estado || 'PAGADO',
+      estadoCocina: 'PENDIENTE', // Arranca pendiente en cocina
       mesaId: createPedidoDto.mesaId || undefined,
       cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
@@ -121,6 +119,25 @@ export class PedidosService {
       order: { createdAt: 'DESC' }
     });
   }
+
+  // --- LÓGICA DEL KDS ---
+  findPendientesCocina(empresaId: string) {
+    return this.pedidoRepository.find({
+      where: { 
+        empresaId, 
+        estadoCocina: 'PENDIENTE',
+        estado: 'ABIERTO' // Solo mostramos los pedidos de mesas abiertas
+      },
+      relations: { mesa: true, detalles: { producto: true } },
+      order: { createdAt: 'ASC' } // Los más viejos primero
+    });
+  }
+
+  async marcarListo(id: string) {
+    await this.pedidoRepository.update(id, { estadoCocina: 'LISTO' });
+    return { success: true };
+  }
+  // ---------------------
 
   findOne(id: string) {
     return this.pedidoRepository.findOne({ 

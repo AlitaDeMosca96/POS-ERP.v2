@@ -2,7 +2,7 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, Jo
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { PedidoDetalle } from './pedido-detalle.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
-import { Caja } from '../../cajas/entities/caja.entity'; // <-- IMPORTAMOS CAJA
+import { Caja } from '../../cajas/entities/caja.entity';
 
 @Entity('pedidos')
 export class Pedido {
@@ -14,6 +14,9 @@ export class Pedido {
 
   @Column({ type: 'varchar', default: 'PAGADO' })
   estado: string; // ABIERTO o PAGADO
+
+  @Column({ type: 'varchar', default: 'PENDIENTE' })
+  estadoCocina: string; // PENDIENTE o LISTO
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
@@ -29,7 +32,6 @@ export class Pedido {
   @Column('uuid', { nullable: true })
   mesaId: string;
 
-  // RELACIÓN CON CAJA
   @ManyToOne(() => Caja, { nullable: true })
   @JoinColumn({ name: 'caja_id' })
   caja: Caja;

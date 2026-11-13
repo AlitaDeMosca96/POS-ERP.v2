@@ -12,7 +12,6 @@ export class PedidosController {
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Request() req: any) {
     createPedidoDto.empresaId = req.user.empresaId; 
-    // ACÁ AGREGAMOS EL SEGUNDO PARÁMETRO (el ID del usuario que cobra)
     return this.pedidosService.create(createPedidoDto, req.user.id); 
   }
 
@@ -20,6 +19,18 @@ export class PedidosController {
   findAll(@Request() req: any) {
     return this.pedidosService.findAll(req.user.empresaId);
   }
+
+  // --- RUTAS PARA EL KDS (COCINA) ---
+  @Get('cocina')
+  findPendientesCocina(@Request() req: any) {
+    return this.pedidosService.findPendientesCocina(req.user.empresaId);
+  }
+
+  @Patch(':id/cocina')
+  marcarListo(@Param('id') id: string) {
+    return this.pedidosService.marcarListo(id);
+  }
+  // -----------------------------------
 
   @Get('mesa/:mesaId')
   findAbiertoByMesa(@Param('mesaId') mesaId: string, @Request() req: any) {
