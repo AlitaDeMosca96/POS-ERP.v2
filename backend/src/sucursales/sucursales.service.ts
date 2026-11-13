@@ -17,15 +17,14 @@ export class SucursalesService {
     return this.sucursalRepository.save(sucursal);
   }
 
-  findAll() {
-    // Usamos { empresa: true } en lugar de ['empresa']
-    return this.sucursalRepository.find({ relations: { empresa: true } }); 
+  findAll(empresaId: string) {
+    return this.sucursalRepository.find({ where: { empresaId } });
   }
 
   findOne(id: string) {
     return this.sucursalRepository.findOne({ 
       where: { id },
-      relations: { empresa: true } 
+      relations: { empresa: true }
     });
   }
 

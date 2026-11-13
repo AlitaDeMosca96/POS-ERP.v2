@@ -4,4 +4,5 @@ export class CreateUsuarioDto {
   nombre: string;
   rol?: string;
   empresaId: string;
+  sucursalId?: string; // <-- NUEVO
 }

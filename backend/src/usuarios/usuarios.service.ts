@@ -14,28 +14,39 @@ export class UsuariosService {
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto) {
-    const usuario = this.usuarioRepository.create(createUsuarioDto);
+    const usuario = this.usuarioRepository.create({
+      email: createUsuarioDto.email,
+      password: createUsuarioDto.password,
+      nombre: createUsuarioDto.nombre,
+      rol: createUsuarioDto.rol || 'CAJERO',
+      empresaId: createUsuarioDto.empresaId,
+      sucursal: createUsuarioDto.sucursalId ? { id: createUsuarioDto.sucursalId } : undefined
+    });
+    
     const salt = await bcrypt.genSalt(10);
     usuario.password = await bcrypt.hash(usuario.password, salt);
+    
     return this.usuarioRepository.save(usuario);
   }
 
-  findAll() {
-    return this.usuarioRepository.find({ relations: { empresa: true } });
+  findAll(empresaId: string) {
+    return this.usuarioRepository.find({ 
+      where: { empresaId },
+      relations: { empresa: true, sucursal: true } 
+    });
   }
 
   findOne(id: string) {
     return this.usuarioRepository.findOne({ 
       where: { id },
-      relations: { empresa: true }
+      relations: { empresa: true, sucursal: true }
     });
   }
 
-  // NUEVA FUNCIÓN
   findByEmail(email: string) {
     return this.usuarioRepository.findOne({ 
       where: { email },
-      relations: { empresa: true }
+      relations: { empresa: true, sucursal: true }
     });
   }
 

@@ -75,47 +75,32 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
             <h2 className="text-3xl font-bold text-gray-800">Resumen del Día</h2>
             
-            <div className="flex gap-3 flex-wrap">
-              <button 
-                onClick={() => router.push('/cocina')}
-                className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
-                Pantalla Cocina
+            <div className="flex gap-2 flex-wrap justify-end">
+              <button onClick={() => router.push('/empleados')} className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
+                Empleados
               </button>
-              <button 
-                onClick={() => router.push('/insumos')}
-                className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/sucursales')} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
+                Sucursales
+              </button>
+              <button onClick={() => router.push('/cocina')} className="bg-orange-500 hover:bg-orange-600 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
+                Cocina
+              </button>
+              <button onClick={() => router.push('/insumos')} className="bg-teal-600 hover:bg-teal-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 Insumos
               </button>
-              <button 
-                onClick={() => router.push('/caja')}
-                className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/caja')} className="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 Caja
               </button>
-              <button 
-                onClick={() => router.push('/mesas')}
-                className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/mesas')} className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 Mesas
               </button>
-              <button 
-                onClick={() => router.push('/historial')}
-                className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/historial')} className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 Historial
               </button>
-              <button 
-                onClick={() => router.push('/productos')}
-                className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/productos')} className="bg-gray-800 hover:bg-gray-900 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 Productos
               </button>
-              <button 
-                onClick={() => router.push('/pos')}
-                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg shadow transition"
-              >
+              <button onClick={() => router.push('/pos')} className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">
                 + Ir al POS
               </button>
             </div>
