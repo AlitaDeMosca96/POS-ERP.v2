@@ -38,8 +38,14 @@ export default function POSPage() {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // --- ESTADOS PARA EL MODAL DE PAGO ---
+  const [modalPagoAbierto, setModalPagoAbierto] = useState(false);
+  const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'>('EFECTIVO');
+  const [montoRecibido, setMontoRecibido] = useState<string>('');
+
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
     if (!token) {
       router.push('/');
       return;
@@ -63,7 +69,7 @@ export default function POSPage() {
     };
     
     cargarDatos();
-  }, [router]);
+  }, [router, token]);
 
   const handleMesaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevaMesaId = e.target.value;
@@ -73,7 +79,6 @@ export default function POSPage() {
 
     if (!nuevaMesaId) return;
 
-    const token = localStorage.getItem('token');
     try {
       const res = await fetch(`http://localhost:3000/pedidos/mesa/${nuevaMesaId}`, {
         headers: { Authorization: `Bearer ${token}` }
@@ -83,10 +88,8 @@ export default function POSPage() {
         const texto = await res.text();
         if (texto) {
           const pedidoAbierto = JSON.parse(texto);
-          
           if (pedidoAbierto && pedidoAbierto.id) {
             setPedidoActualId(pedidoAbierto.id);
-            
             const itemsCarrito = pedidoAbierto.detalles.map((det: any) => ({
               id: det.producto.id,
               nombre: det.producto.nombre,
@@ -94,7 +97,6 @@ export default function POSPage() {
               cantidad: Number(det.cantidad),
               stock: 999, 
             }));
-            
             setCarrito(itemsCarrito);
           }
         }
@@ -118,40 +120,54 @@ export default function POSPage() {
     return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
   };
 
-  const handleCobrar = async (estadoFinal: 'PAGADO' | 'ABIERTO') => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
+  // --- LÓGICA DE COBRO Y PAGO ---
+  const abrirModalCobro = () => {
+    if (carrito.length === 0 && mesaActivaId) {
+      // Si es una mesa vacía, solo la liberamos
+      liberarMesaVacia();
+      return;
+    }
+    setMontoRecibido('');
+    setMetodoPago('EFECTIVO');
+    setModalPagoAbierto(true);
+  };
 
-    if (carrito.length === 0 && mesaActivaId && estadoFinal === 'PAGADO') {
-      try {
-        if (pedidoActualId) {
-          await fetch(`http://localhost:3000/pedidos/${pedidoActualId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-            body: JSON.stringify({ estado: 'PAGADO' })
-          });
-        }
-        await fetch(`http://localhost:3000/mesas/${mesaActivaId}`, {
+  const liberarMesaVacia = async () => {
+    try {
+      if (pedidoActualId) {
+        await fetch(`http://localhost:3000/pedidos/${pedidoActualId}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-          body: JSON.stringify({ estado: 'LIBRE' })
+          body: JSON.stringify({ estado: 'PAGADO' })
         });
-        alert('Mesa liberada correctamente');
-        setMesaActivaId('');
-        setPedidoActualId(null);
-        const resMesas = await fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } });
-        setMesas(await resMesas.json());
-        return;
-      } catch (error) {
-        console.error(error);
-        return;
       }
+      await fetch(`http://localhost:3000/mesas/${mesaActivaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ estado: 'LIBRE' })
+      });
+      alert('Mesa liberada correctamente');
+      setMesaActivaId('');
+      setPedidoActualId(null);
+      const resMesas = await fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } });
+      setMesas(await resMesas.json());
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const confirmarPago = async () => {
+    const total = calcularTotal();
+    if (metodoPago === 'EFECTIVO' && Number(montoRecibido) < total) {
+      alert('El monto recibido es menor al total a pagar.');
+      return;
     }
 
     const pedidoData = {
       pedidoId: pedidoActualId,
-      total: calcularTotal(),
-      estado: estadoFinal,
+      total: total,
+      estado: 'PAGADO',
+      metodoPago: metodoPago,
       mesaId: mesaActivaId || null,
       detalles: carrito.map(item => ({
         productoId: item.id,
@@ -168,11 +184,52 @@ export default function POSPage() {
       });
 
       if (res.ok) {
-        alert(estadoFinal === 'PAGADO' ? '¡Venta cobrada con éxito!' : 'Mesa guardada/modificada correctamente');
+        alert('¡Venta cobrada con éxito!');
         setCarrito([]);
         setMesaActivaId('');
         setPedidoActualId(null);
+        setModalPagoAbierto(false);
         
+        // Recargamos productos y mesas
+        const [resProd, resMesas] = await Promise.all([
+          fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+        ]);
+        setProductos(await resProd.json());
+        setMesas(await resMesas.json());
+      } else {
+        alert('Error al guardar el pedido');
+      }
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
+  const handleGuardarMesa = async () => {
+    const pedidoData = {
+      pedidoId: pedidoActualId,
+      total: calcularTotal(),
+      estado: 'ABIERTO',
+      mesaId: mesaActivaId || null,
+      detalles: carrito.map(item => ({
+        productoId: item.id,
+        cantidad: item.cantidad,
+        precioUnitario: item.precio
+      }))
+    };
+
+    try {
+      const res = await fetch('http://localhost:3000/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(pedidoData)
+      });
+
+      if (res.ok) {
+        alert('Mesa guardada/modificada correctamente');
+        setCarrito([]);
+        setMesaActivaId('');
+        setPedidoActualId(null);
         const [resProd, resMesas] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
           fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
@@ -192,6 +249,8 @@ export default function POSPage() {
   const productosFiltrados = categoriaActiva === 'ALL' 
     ? productos 
     : productos.filter(p => p.categoriaId === categoriaActiva || p.categoria?.id === categoriaActiva);
+
+  const vuelto = Number(montoRecibido) - calcularTotal();
 
   return (
     <div className="flex h-screen bg-gray-100">
@@ -228,7 +287,6 @@ export default function POSPage() {
               <button 
                 key={prod.id}
                 onClick={() => agregarAlCarrito(prod)}
-                // SE QUITÓ EL DISABLED PARA PERMITIR VENDER PLATOS CON RECETA (STOCK 0)
                 className="p-4 rounded-lg shadow transition border border-gray-200 flex flex-col justify-between h-32 bg-white hover:shadow-lg"
               >
                 <div className="text-left w-full">
@@ -286,20 +344,103 @@ export default function POSPage() {
             <button 
               className="w-1/2 bg-yellow-500 text-white py-3 rounded-lg text-lg font-bold hover:bg-yellow-600 disabled:bg-gray-300"
               disabled={carrito.length === 0} 
-              onClick={() => handleCobrar('ABIERTO')}
+              onClick={handleGuardarMesa}
             >
               Guardar Mesa
             </button>
             <button 
               className="w-1/2 bg-green-600 text-white py-3 rounded-lg text-lg font-bold hover:bg-green-700 disabled:bg-gray-300"
               disabled={carrito.length === 0 && !mesaActivaId}
-              onClick={() => handleCobrar('PAGADO')}
+              onClick={abrirModalCobro}
             >
               {carrito.length === 0 && mesaActivaId ? 'Liberar Mesa' : 'Cobrar'}
             </button>
           </div>
         </div>
       </div>
+
+      {/* MODAL DE PAGO */}
+      {modalPagoAbierto && (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+            
+            <div className="bg-green-600 text-white p-4 text-center">
+              <h3 className="text-2xl font-bold">Cobrar Ticket</h3>
+              <p className="text-3xl font-light mt-2">Total: ${calcularTotal()}</p>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              
+              {/* SELECCIÓN DE MÉTODO */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button 
+                    onClick={() => setMetodoPago('EFECTIVO')}
+                    className={`py-2 rounded border font-bold ${metodoPago === 'EFECTIVO' ? 'bg-green-100 border-green-500 text-green-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    Efectivo
+                  </button>
+                  <button 
+                    onClick={() => setMetodoPago('TARJETA')}
+                    className={`py-2 rounded border font-bold ${metodoPago === 'TARJETA' ? 'bg-blue-100 border-blue-500 text-blue-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    Tarjeta
+                  </button>
+                  <button 
+                    onClick={() => setMetodoPago('TRANSFERENCIA')}
+                    className={`py-2 rounded border font-bold ${metodoPago === 'TRANSFERENCIA' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}
+                  >
+                    QR / Transf.
+                  </button>
+                </div>
+              </div>
+
+              {/* SI ES EFECTIVO, PEDIMOS MONTO Y CALCULAMOS VUELTO */}
+              {metodoPago === 'EFECTIVO' && (
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Monto Recibido</label>
+                    <input
+                      type="number"
+                      value={montoRecibido}
+                      onChange={e => setMontoRecibido(e.target.value)}
+                      className="w-full text-2xl border p-3 rounded text-gray-800 focus:ring-2 focus:ring-green-500 font-bold"
+                      placeholder="0.00"
+                      autoFocus
+                    />
+                  </div>
+                  <div className="flex justify-between items-center text-lg font-bold">
+                    <span className="text-gray-600">Vuelto:</span>
+                    <span className={vuelto >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      ${vuelto > 0 ? vuelto.toFixed(2) : '0.00'}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* BOTONES DE ACCIÓN */}
+              <div className="flex gap-3 pt-2">
+                <button 
+                  onClick={() => setModalPagoAbierto(false)}
+                  className="w-1/2 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  onClick={confirmarPago}
+                  disabled={metodoPago === 'EFECTIVO' && Number(montoRecibido) < calcularTotal()}
+                  className="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+                >
+                  Confirmar
+                </button>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

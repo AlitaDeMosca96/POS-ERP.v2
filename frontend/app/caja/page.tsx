@@ -23,6 +23,7 @@ interface Resumen {
   movimientos: Movimiento[];
   ingresos: number;
   sangrias: number;
+  totalVentasEfectivo: number;
   saldoEsperado: number;
 }
 
@@ -31,11 +32,9 @@ export default function CajaPage() {
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
   
-  // Estados para Apertura/Cierre
   const [montoApertura, setMontoApertura] = useState('');
   const [montoCierre, setMontoCierre] = useState('');
 
-  // Estados para Movimientos
   const [movTipo, setMovTipo] = useState('SANGRIA');
   const [movMonto, setMovMonto] = useState('');
   const [movMotivo, setMovMotivo] = useState('');
@@ -155,7 +154,7 @@ export default function CajaPage() {
       if (res.ok) {
         setMovMonto('');
         setMovMotivo('');
-        cargarResumen(resumen.caja.id); // Recargamos para ver el movimiento y el nuevo saldo
+        cargarResumen(resumen.caja.id);
       }
     } catch (error) {
       console.error(error);
@@ -198,25 +197,23 @@ export default function CajaPage() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             
-            {/* COLUMNA IZQUIERDA: ACCIONES */}
             <div className="lg:col-span-1 space-y-6">
               
-              {/* ESTADO DE CAJA */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                <h2 className="text-xl font-bold text-green-700 mb-4 border-b pb-2">Caja Abierta</h2>
+                <h2 className="text-xl font-bold text-green-700 mb-4 border-b pb-2">Resumen del Turno</h2>
                 <div className="space-y-2 text-gray-600">
                   <p className="flex justify-between"><span>Saldo Inicial:</span> <span className="font-bold">${resumen.caja.saldoInicial}</span></p>
-                  <p className="flex justify-between text-blue-600"><span>Ingresos:</span> <span className="font-bold">+${resumen.ingresos}</span></p>
+                  <p className="flex justify-between text-green-600"><span>Ventas en Efectivo:</span> <span className="font-bold">+${resumen.totalVentasEfectivo.toFixed(2)}</span></p>
+                  <p className="flex justify-between text-blue-600"><span>Ingresos Manuales:</span> <span className="font-bold">+${resumen.ingresos}</span></p>
                   <p className="flex justify-between text-red-600"><span>Sangrías:</span> <span className="font-bold">-${resumen.sangrias}</span></p>
                   <div className="border-t pt-2 mt-2">
                     <p className="flex justify-between text-xl font-bold text-gray-800">
-                      <span>En Caja:</span> <span>${resumen.saldoEsperado}</span>
+                      <span>En Caja:</span> <span>${resumen.saldoEsperado.toFixed(2)}</span>
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* MOVIMIENTOS */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h2 className="text-lg font-bold text-gray-800 mb-4">Registrar Movimiento</h2>
                 <form onSubmit={handleRegistrarMovimiento} className="space-y-3">
@@ -232,7 +229,6 @@ export default function CajaPage() {
                 </form>
               </div>
 
-              {/* CIERRE DE CAJA */}
               <div className="bg-white p-6 rounded-xl shadow-sm border border-red-200">
                 <h2 className="text-lg font-bold text-red-700 mb-4">Cierre de Caja (Arqueo)</h2>
                 <form onSubmit={handleCerrarCaja} className="space-y-3">
@@ -246,12 +242,11 @@ export default function CajaPage() {
 
             </div>
 
-            {/* COLUMNA DERECHA: HISTORIAL DE MOVIMIENTOS */}
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6">
-                <h2 className="text-xl font-bold text-gray-800 mb-4">Historial del Turno</h2>
+                <h2 className="text-xl font-bold text-gray-800 mb-4">Movimientos Manuales</h2>
                 {resumen.movimientos.length === 0 ? (
-                  <p className="text-gray-500 text-center mt-10">No hay movimientos registrados todavía.</p>
+                  <p className="text-gray-500 text-center mt-10">No hay sangrías ni ingresos registrados.</p>
                 ) : (
                   <ul className="space-y-3">
                     {resumen.movimientos.map(mov => (

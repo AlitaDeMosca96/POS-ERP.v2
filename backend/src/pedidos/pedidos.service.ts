@@ -99,7 +99,8 @@ export class PedidosService {
       total: createPedidoDto.total,
       empresaId: createPedidoDto.empresaId,
       estado: createPedidoDto.estado || 'PAGADO',
-      estadoCocina: 'PENDIENTE', // Arranca pendiente en cocina
+      estadoCocina: 'PENDIENTE',
+      metodoPago: createPedidoDto.metodoPago || 'EFECTIVO', // <-- GUARDAMOS EL MÉTODO
       mesaId: createPedidoDto.mesaId || undefined,
       cajaId: cajaAbierta ? cajaAbierta.id : undefined,
       mesa: createPedidoDto.mesaId ? { id: createPedidoDto.mesaId } : undefined,
@@ -120,16 +121,15 @@ export class PedidosService {
     });
   }
 
-  // --- LÓGICA DEL KDS ---
   findPendientesCocina(empresaId: string) {
     return this.pedidoRepository.find({
       where: { 
         empresaId, 
         estadoCocina: 'PENDIENTE',
-        estado: 'ABIERTO' // Solo mostramos los pedidos de mesas abiertas
+        estado: 'ABIERTO'
       },
       relations: { mesa: true, detalles: { producto: true } },
-      order: { createdAt: 'ASC' } // Los más viejos primero
+      order: { createdAt: 'ASC' }
     });
   }
 
@@ -137,7 +137,6 @@ export class PedidosService {
     await this.pedidoRepository.update(id, { estadoCocina: 'LISTO' });
     return { success: true };
   }
-  // ---------------------
 
   findOne(id: string) {
     return this.pedidoRepository.findOne({ 

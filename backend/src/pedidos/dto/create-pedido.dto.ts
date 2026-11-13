@@ -10,6 +10,7 @@ export class CreatePedidoDto {
   empresaId: string;
   mesaId?: string;
   estado?: string;
-  estadoCocina?: string; // <-- NUEVO
+  estadoCocina?: string;
+  metodoPago?: string; // <-- NUEVO
   detalles: CreatePedidoDetalleDto[];
 }

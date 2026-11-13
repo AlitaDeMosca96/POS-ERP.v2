@@ -18,6 +18,9 @@ export class Pedido {
   @Column({ type: 'varchar', default: 'PENDIENTE' })
   estadoCocina: string; // PENDIENTE o LISTO
 
+  @Column({ type: 'varchar', default: 'EFECTIVO' })
+  metodoPago: string; // EFECTIVO, TARJETA, TRANSFERENCIA
+
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
