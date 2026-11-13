@@ -3,6 +3,7 @@ import { Empresa } from '../../empresas/entities/empresa.entity';
 import { PedidoDetalle } from './pedido-detalle.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
 import { Caja } from '../../cajas/entities/caja.entity';
+import { Cliente } from '../../clientes/entities/cliente.entity'; // <-- NUEVO
 
 @Entity('pedidos')
 export class Pedido {
@@ -13,13 +14,13 @@ export class Pedido {
   total: number;
 
   @Column({ type: 'varchar', default: 'PAGADO' })
-  estado: string; // ABIERTO o PAGADO
+  estado: string;
 
   @Column({ type: 'varchar', default: 'PENDIENTE' })
-  estadoCocina: string; // PENDIENTE o LISTO
+  estadoCocina: string;
 
   @Column({ type: 'varchar', default: 'EFECTIVO' })
-  metodoPago: string; // EFECTIVO, TARJETA, TRANSFERENCIA
+  metodoPago: string;
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
@@ -41,6 +42,14 @@ export class Pedido {
 
   @Column('uuid', { nullable: true })
   cajaId: string;
+
+  // RELACIÓN CON CLIENTE
+  @ManyToOne(() => Cliente, { nullable: true })
+  @JoinColumn({ name: 'cliente_id' })
+  cliente: Cliente;
+
+  @Column('uuid', { nullable: true })
+  clienteId: string;
 
   @CreateDateColumn()
   createdAt: Date;

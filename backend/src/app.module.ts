@@ -16,7 +16,9 @@ import { InsumosModule } from './insumos/insumos.module';
 import { RecetasModule } from './recetas/recetas.module';
 import { ProveedoresModule } from './proveedores/proveedores.module';
 import { ComprasModule } from './compras/compras.module';
-import { ModificadoresModule } from './modificadores/modificadores.module'; // <-- NUEVO
+import { ModificadoresModule } from './modificadores/modificadores.module';
+import { ReportesModule } from './reportes/reportes.module';
+import { ClientesModule } from './clientes/clientes.module'; // <-- NUEVO
 
 @Module({
   imports: [
@@ -44,7 +46,9 @@ import { ModificadoresModule } from './modificadores/modificadores.module'; // <
     RecetasModule,
     ProveedoresModule,
     ComprasModule,
-    ModificadoresModule, // <-- NUEVO
+    ModificadoresModule,
+    ReportesModule,
+    ClientesModule, // <-- NUEVO
   ],
   controllers: [AppController],
   providers: [AppService],
