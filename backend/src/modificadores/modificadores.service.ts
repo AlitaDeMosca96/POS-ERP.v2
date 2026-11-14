@@ -17,8 +17,12 @@ export class ModificadoresService {
     return this.modificadorRepository.save(modificador);
   }
 
-  findByProducto(productoId: string) {
-    return this.modificadorRepository.find({ where: { productoId } });
+  async findByProducto(productoId: string, empresaId: string) {
+    return this.modificadorRepository.find({ 
+      where: { 
+        producto: { id: productoId, empresaId } // <-- VALIDA QUE EL PRODUCTO SEA DE LA EMPRESA
+      } 
+    });
   }
 
   findOne(id: string) {

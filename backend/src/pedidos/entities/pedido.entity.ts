@@ -23,9 +23,8 @@ export class Pedido {
   @Column({ type: 'varchar', default: 'EFECTIVO' })
   metodoPago: string;
 
-  // --- DELIVERY ---
   @Column({ type: 'varchar', nullable: true })
-  direccionEntrega: string;
+  direccionEntrega: string | null;
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   costoEnvio: number;
@@ -33,17 +32,20 @@ export class Pedido {
   @Column({ type: 'varchar', default: 'NO_APLICA' })
   estadoDelivery: string;
 
-  // --- FACTURACION ---
   @Column({ type: 'varchar', default: 'FACTURA_B' })
-  tipoFactura: string; // FACTURA_A, FACTURA_B, FACTURA_C
+  tipoFactura: string;
 
   @Column({ type: 'varchar', nullable: true })
-  cuitFactura: string;
+  cuitFactura: string | null;
 
   @Column({ type: 'varchar', nullable: true })
-  razonSocialFactura: string;
+  razonSocialFactura: string | null;
 
-  // -----------------------------
+  @Column({ type: 'varchar', nullable: true })
+  numeroComprobante: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  caeSimulado: string | null;
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })

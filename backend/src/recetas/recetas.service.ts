@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateRecetaDto } from './dto/create-receta.dto';
 import { UpdateRecetaDto } from './dto/update-receta.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -12,7 +12,7 @@ export class RecetasService {
     private readonly recetaRepository: Repository<Receta>,
   ) {}
 
-  create(createRecetaDto: CreateRecetaDto) {
+  async create(createRecetaDto: CreateRecetaDto) {
     const receta = this.recetaRepository.create({
       producto: { id: createRecetaDto.productoId },
       insumo: { id: createRecetaDto.insumoId },
@@ -21,14 +21,16 @@ export class RecetasService {
     return this.recetaRepository.save(receta);
   }
 
-  findByProducto(productoId: string) {
+  async findByProducto(productoId: string, empresaId: string) {
     return this.recetaRepository.find({
-      where: { producto: { id: productoId } }, // <-- BUSCAMOS POR LA RELACIÓN
+      where: { 
+        producto: { id: productoId, empresaId } // <-- VALIDA QUE EL PRODUCTO SEA DE LA EMPRESA
+      },
       relations: { insumo: true }
     });
   }
 
-  remove(id: string) {
+  async remove(id: string) {
     return this.recetaRepository.delete(id);
   }
 }

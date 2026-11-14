@@ -15,22 +15,16 @@ interface Resumen {
   topProductos: { nombre: string; cantidad: number; total: number }[];
 }
 
-interface Sucursal {
-  id: string;
-  nombre: string;
-}
-
 const COLORS = ['#10B981', '#3B82F6', '#8B5CF6'];
 
 export default function DashboardPage() {
   const router = useRouter();
   const [usuario, setUsuario] = useState<any>(null);
   const [resumen, setResumen] = useState<Resumen | null>(null);
-  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
-  const [sucursalActiva, setSucursalActiva] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
 
   useEffect(() => {
     const userStr = localStorage.getItem('usuario');
@@ -40,28 +34,9 @@ export default function DashboardPage() {
       return;
     }
 
-    const user = JSON.parse(userStr);
-    setUsuario(user);
+    setUsuario(JSON.parse(userStr));
 
-    if (user.rol === 'ADMIN' || user.rol === 'SUPER_ADMIN') {
-      fetch('/api/sucursales', { headers: { Authorization: `Bearer ${token}` } })
-        .then(res => res.json())
-        .then(data => setSucursales(data));
-    }
-
-    const sucursalGuardada = localStorage.getItem('sucursalActiva') || '';
-    setSucursalActiva(sucursalGuardada);
-
-    cargarReportes(sucursalGuardada);
-  }, [router, token]);
-
-  const cargarReportes = (sucursalId: string) => {
-    setLoading(true);
-    const url = sucursalId 
-      ? `/api/reportes/resumen?sucursalId=${sucursalId}` 
-      : '/api/reportes/resumen';
-
-    fetch(url, {
+    fetch(`${apiUrl}/reportes/resumen`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
@@ -80,21 +55,14 @@ export default function DashboardPage() {
         console.error(err);
         setLoading(false);
       });
-  };
-
-  const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const nuevaSucursal = e.target.value;
-    setSucursalActiva(nuevaSucursal);
-    localStorage.setItem('sucursalActiva', nuevaSucursal);
-    cargarReportes(nuevaSucursal);
-  };
+  }, [router, token, apiUrl]);
 
   const handleLogout = () => {
     localStorage.clear();
     router.push('/');
   };
 
-  if (!usuario) return <div className="p-10 text-center text-xl font-bold">Cargando datos del negocio...</div>;
+  if (loading || !usuario) return <div className="p-10 text-center text-xl font-bold">Cargando datos del negocio...</div>;
 
   const metodosPagoData = resumen?.metodosPago.filter(m => m.value > 0) || [];
 
@@ -102,36 +70,7 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
         <h1 className="text-xl font-bold">Mi ERP Gastronómico</h1>
-        
         <div className="flex items-center gap-4">
-          
-          {/* BOTÓN MAESTRO (Solo para SUPER_ADMIN) */}
-          {usuario.rol === 'SUPER_ADMIN' && (
-            <button 
-              onClick={() => router.push('/super-admin')}
-              className="bg-gray-900 hover:bg-black text-white font-bold px-4 py-1 rounded shadow transition border border-gray-700 flex items-center gap-2"
-            >
-              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
-              Ir al Panel Maestro
-            </button>
-          )}
-
-          {(usuario.rol === 'ADMIN' || usuario.rol === 'SUPER_ADMIN') && (
-            <div className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded">
-              <span className="text-sm font-medium">Sucursal:</span>
-              <select 
-                value={sucursalActiva} 
-                onChange={handleSucursalChange}
-                className="bg-white text-gray-800 font-bold text-sm rounded px-2 py-1 focus:outline-none"
-              >
-                <option value="">Todas las sucursales</option>
-                {sucursales.map(suc => (
-                  <option key={suc.id} value={suc.id}>{suc.nombre}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <span className="text-sm font-medium">Hola, {usuario.nombre} ({usuario.rol})</span>
           <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm transition">
             Cerrar Sesión
@@ -143,13 +82,9 @@ export default function DashboardPage() {
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           
           <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-            <h2 className="text-3xl font-bold text-gray-800">
-              Tablero de Control {sucursalActiva ? `- ${sucursales.find(s => s.id === sucursalActiva)?.nombre}` : ''}
-            </h2>
+            <h2 className="text-3xl font-bold text-gray-800">Tablero de Control</h2>
             
             <div className="flex gap-2 flex-wrap justify-end">
-              <button onClick={() => router.push('/campanias')} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Marketing</button>
-              <button onClick={() => router.push('/delivery')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Delivery</button>
               <button onClick={() => router.push('/reservas')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Reservas</button>
               <button onClick={() => router.push('/clientes')} className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Clientes</button>
               <button onClick={() => router.push('/compras')} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Compras</button>
@@ -178,67 +113,65 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {loading ? (
-             <div className="text-center p-10 text-gray-500">Actualizando gráficos...</div>
-          ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Ventas por Medio de Pago</h3>
-                {metodosPagoData.length === 0 ? (
-                  <p className="text-center text-gray-500 mt-10">No hay ventas registradas.</p>
-                ) : (
-                  <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={metodosPagoData}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={100}
-                          fill="#8884d8"
-                          paddingAngle={5}
-                          dataKey="value"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        >
-                          {metodosPagoData.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip formatter={(value) => `$${value}`} />
-                        <Legend verticalAlign="bottom" height={36}/>
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
-
-              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-                <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Top 5 Productos Más Vendidos</h3>
-                {(!resumen?.topProductos || resumen.topProductos.length === 0) ? (
-                  <p className="text-center text-gray-500 mt-10">No hay ventas registradas.</p>
-                ) : (
-                  <div className="h-72 w-full">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart
-                        data={resumen.topProductos}
-                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Ventas por Medio de Pago</h3>
+              {metodosPagoData.length === 0 ? (
+                <p className="text-center text-gray-500 mt-10">No hay ventas registradas aún.</p>
+              ) : (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={metodosPagoData}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={60}
+                        outerRadius={100}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        // ARREGLO DE TYPESCRIPT ACÁ
+                        label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                       >
-                        <XAxis dataKey="nombre" tick={{fontSize: 12}} />
-                        <YAxis />
-                        <Tooltip formatter={(value) => `${value} unidades`} />
-                        <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]}>
-                          {resumen.topProductos.map((entry, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Bar>
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                )}
-              </div>
+                        {metodosPagoData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Pie>
+                      <Tooltip formatter={(value) => `$${value}`} />
+                      <Legend verticalAlign="bottom" height={36}/>
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
             </div>
-          )}
+
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Top 5 Productos Más Vendidos</h3>
+              {(!resumen?.topProductos || resumen.topProductos.length === 0) ? (
+                <p className="text-center text-gray-500 mt-10">No hay ventas registradas aún.</p>
+              ) : (
+                <div className="h-72 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={resumen.topProductos}
+                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <XAxis dataKey="nombre" tick={{fontSize: 12}} />
+                      <YAxis />
+                      <Tooltip formatter={(value) => `${value} unidades`} />
+                      <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]}>
+                        {resumen.topProductos.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              )}
+            </div>
+          </div>
+
         </div>
       </main>
     </div>

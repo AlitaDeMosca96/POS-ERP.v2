@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { RecetasService } from './recetas.service';
 import { CreateRecetaDto } from './dto/create-receta.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -14,8 +14,8 @@ export class RecetasController {
   }
 
   @Get('producto/:productoId')
-  findByProducto(@Param('productoId') productoId: string) {
-    return this.recetasService.findByProducto(productoId);
+  findByProducto(@Param('productoId') productoId: string, @Request() req: any) {
+    return this.recetasService.findByProducto(productoId, req.user.empresaId);
   }
 
   @Delete(':id')

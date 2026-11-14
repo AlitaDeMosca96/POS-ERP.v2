@@ -22,7 +22,7 @@ import { ClientesModule } from './clientes/clientes.module';
 import { ReservasModule } from './reservas/reservas.module';
 import { CampaniasModule } from './campanias/campanias.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
-import { PlanesModule } from './planes/planes.module'; // <-- NUEVO
+import { PlanesModule } from './planes/planes.module';
 
 @Module({
   imports: [
@@ -56,7 +56,7 @@ import { PlanesModule } from './planes/planes.module'; // <-- NUEVO
     ReservasModule,
     CampaniasModule,
     SuperAdminModule,
-    PlanesModule, // <-- REGISTRADO
+    PlanesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

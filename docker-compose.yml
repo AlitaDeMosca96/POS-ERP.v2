@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: pos_erp_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+      POSTGRES_DB: ${DB_NAME:-pos-erp-v2}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - pos_network
+
+  backend:
+    build: ./backend
+    container_name: pos_erp_backend
+    restart: always
+    environment:
+      - DB_HOST=db
+      - DB_PORT=5432
+      - DB_USER=${DB_USER:-postgres}
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - DB_NAME=${DB_NAME:-pos-erp-v2}
+      - JWT_SECRET=${JWT_SECRET}
+      - PORT=3000
+    depends_on:
+      - db
+    ports:
+      - "3000:3000"
+    networks:
+      - pos_network
+
+  frontend:
+    build: ./frontend
+    container_name: pos_erp_frontend
+    restart: always
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:3000
+    depends_on:
+      - backend
+    ports:
+      - "3001:3001"
+    networks:
+      - pos_network
+
+volumes:
+  postgres_data:
+
+networks:
+  pos_network:
+    driver: bridge

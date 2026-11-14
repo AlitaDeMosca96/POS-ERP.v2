@@ -8,6 +8,8 @@ interface Venta {
   tipoFactura?: string;
   cuitFactura?: string;
   razonSocialFactura?: string;
+  numeroComprobante?: string;
+  caeSimulado?: string;
   cliente?: { nombre: string };
   mesa?: { nombre: string };
   detalles: {
@@ -49,7 +51,6 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
             <h3 className="text-lg font-bold">¡Venta Exitosa!</h3>
           </div>
 
-          {/* ÁREA DEL TICKET */}
           <div className="p-6 overflow-y-auto font-mono text-sm text-black ticket-print-area bg-white">
             <div className="text-center mb-4">
               <h2 className="text-xl font-bold uppercase">Mi ERP Gastronómico</h2>
@@ -79,6 +80,14 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
                 <span>COMPROBANTE:</span>
                 <span>{venta.tipoFactura ? venta.tipoFactura.replace('_', ' ') : 'FACTURA B'}</span>
               </div>
+              
+              {venta.numeroComprobante && (
+                <div className="flex justify-between mt-1">
+                  <span>NRO:</span>
+                  <span>{venta.numeroComprobante}</span>
+                </div>
+              )}
+              
               {venta.cuitFactura && (
                 <>
                   <div className="flex justify-between mt-1">
@@ -95,6 +104,13 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
                 <div className="flex justify-between mt-1">
                   <span>CLIENTE:</span>
                   <span>{venta.cliente.nombre}</span>
+                </div>
+              )}
+
+              {venta.caeSimulado && (
+                <div className="flex justify-between mt-2 text-[10px] text-gray-600 border-t border-dashed border-gray-300 pt-1">
+                  <span>CAE:</span>
+                  <span>{venta.caeSimulado}</span>
                 </div>
               )}
             </div>

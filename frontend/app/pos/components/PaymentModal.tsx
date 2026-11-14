@@ -27,13 +27,18 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
       alert('El monto recibido es menor al total a pagar.');
       return;
     }
-    if (tipoFactura !== 'FACTURA_B' && !cuit) {
-      alert('Por favor, ingresá el CUIT.');
-      return;
-    }
     if (esDelivery && !direccion) {
       alert('Por favor, ingresá la dirección de entrega.');
       return;
+    }
+
+    let cuitLimpio = null;
+    if (tipoFactura !== 'FACTURA_B') {
+      cuitLimpio = cuit.replace(/[^0-9]/g, ''); // Solo números
+      if (cuitLimpio.length !== 11) {
+        alert('El CUIT debe tener exactamente 11 dígitos numéricos.');
+        return;
+      }
     }
 
     onConfirm({
@@ -41,7 +46,7 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
       direccionEntrega: esDelivery ? direccion : null,
       costoEnvio: esDelivery ? Number(costoEnvio) : 0,
       tipoFactura,
-      cuitFactura: tipoFactura !== 'FACTURA_B' ? cuit : null,
+      cuitFactura: tipoFactura !== 'FACTURA_B' ? cuitLimpio : null,
       razonSocialFactura: tipoFactura !== 'FACTURA_B' ? razonSocial : null,
     });
   };
@@ -64,8 +69,21 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
             </select>
             {tipoFactura !== 'FACTURA_B' && (
               <div className="space-y-3 mt-3">
-                <input type="text" placeholder="CUIT" value={cuit} onChange={e => setCuit(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
-                <input type="text" placeholder="Razón Social" value={razonSocial} onChange={e => setRazonSocial(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
+                <input 
+                  type="text" 
+                  placeholder="CUIT (11 dígitos)" 
+                  value={cuit} 
+                  onChange={e => setCuit(e.target.value)} 
+                  maxLength={13}
+                  className="w-full border p-2 rounded text-gray-800" 
+                />
+                <input 
+                  type="text" 
+                  placeholder="Razón Social" 
+                  value={razonSocial} 
+                  onChange={e => setRazonSocial(e.target.value)} 
+                  className="w-full border p-2 rounded text-gray-800" 
+                />
               </div>
             )}
           </div>

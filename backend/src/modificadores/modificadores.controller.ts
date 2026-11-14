@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
 import { ModificadoresService } from './modificadores.service';
 import { CreateModificadoreDto } from './dto/create-modificadore.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard'; // <-- RUTA CORREGIDA
 
 @Controller('modificadores')
 @UseGuards(JwtAuthGuard)
@@ -14,8 +14,8 @@ export class ModificadoresController {
   }
 
   @Get('producto/:productoId')
-  findByProducto(@Param('productoId') productoId: string) {
-    return this.modificadoresService.findByProducto(productoId);
+  findByProducto(@Param('productoId') productoId: string, @Request() req: any) {
+    return this.modificadoresService.findByProducto(productoId, req.user.empresaId);
   }
 
   @Delete(':id')

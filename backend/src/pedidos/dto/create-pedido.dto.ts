@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Min, ValidateNested } from 'class-validator';
 
 export class CreatePedidoDetalleDto {
   @IsUUID()
@@ -61,6 +61,7 @@ export class CreatePedidoDto {
 
   @IsString()
   @IsOptional()
+  @Length(11, 11, { message: 'El CUIT debe tener exactamente 11 dígitos' })
   cuitFactura?: string;
 
   @IsString()

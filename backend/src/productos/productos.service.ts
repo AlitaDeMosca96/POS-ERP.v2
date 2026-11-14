@@ -28,17 +28,29 @@ export class ProductosService {
   }
 
   async findAll(empresaId: string) {
+    // 1. Traemos todos los productos en 1 consulta
     const productos = await this.productoRepository.find({ 
       where: { empresaId },
       relations: { empresa: true, categoria: true } 
     });
 
-    for (const prod of productos) {
-      const receta = await this.recetaRepository.find({
-        where: { producto: { id: prod.id } },
-        relations: { insumo: true }
-      });
+    // 2. Traemos todas las recetas de la empresa en 1 sola consulta
+    const recetas = await this.recetaRepository.createQueryBuilder('receta')
+      .leftJoinAndSelect('receta.producto', 'producto')
+      .leftJoinAndSelect('receta.insumo', 'insumo')
+      .where('producto.empresaId = :empresaId', { empresaId })
+      .getMany();
 
+    // 3. Agrupamos las recetas por producto en memoria (sin ir a la BD)
+    const recetasPorProducto = recetas.reduce((acc, receta) => {
+      if (!acc[receta.producto.id]) acc[receta.producto.id] = [];
+      acc[receta.producto.id].push(receta);
+      return acc;
+    }, {} as Record<string, Receta[]>);
+
+    // 4. Calculamos el stock dinámico
+    for (const prod of productos) {
+      const receta = recetasPorProducto[prod.id] || [];
       if (receta.length > 0) {
         let maxPosible = Infinity;
         for (const item of receta) {
@@ -67,6 +79,6 @@ export class ProductosService {
 
   async remove(id: string, empresaId: string) {
     await this.findOne(id, empresaId);
-    return this.productoRepository.softDelete(id); // <-- SOFT DELETE
+    return this.productoRepository.softDelete(id);
   }
 }

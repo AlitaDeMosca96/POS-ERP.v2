@@ -57,10 +57,21 @@ export class PedidosService {
 
       if (createPedidoDto.costoEnvio) totalCalculado += Number(createPedidoDto.costoEnvio);
 
+      let numeroComprobante: string | undefined = undefined;
+      let caeSimulado: string | undefined = undefined;
+
+      if (createPedidoDto.tipoFactura !== 'FACTURA_B' && createPedidoDto.tipoFactura) {
+        if (!createPedidoDto.cuitFactura || createPedidoDto.cuitFactura.length !== 11) {
+          throw new BadRequestException('CUIT inválido para facturación');
+        }
+        numeroComprobante = `FAC-${Date.now().toString().slice(-8)}`;
+        caeSimulado = `CAE-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+      }
+
       let pedidoGuardado;
 
       if (createPedidoDto.pedidoId) {
-        // --- ACTUALIZAR PEDIDO EXISTENTE (Arregla el bug 2.3c) ---
+        // --- ACTUALIZAR PEDIDO EXISTENTE ---
         const pedidoExistente = await queryRunner.manager.findOne(Pedido, {
           where: { id: createPedidoDto.pedidoId, empresaId },
           relations: { detalles: { producto: true } }
@@ -68,7 +79,6 @@ export class PedidosService {
 
         if (!pedidoExistente) throw new BadRequestException('Pedido original no encontrado');
 
-        // 1. Revertir stock de los detalles viejos
         for (const det of pedidoExistente.detalles) {
           const recetaVieja = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
@@ -82,18 +92,20 @@ export class PedidosService {
           }
         }
 
-        // 2. Borrar los detalles viejos y actualizar la cabecera
         await queryRunner.manager.delete('PedidoDetalle', { pedidoId: pedidoExistente.id });
         
         pedidoExistente.total = totalCalculado;
         pedidoExistente.estado = createPedidoDto.estado || pedidoExistente.estado;
         pedidoExistente.metodoPago = createPedidoDto.metodoPago || pedidoExistente.metodoPago;
+        pedidoExistente.tipoFactura = createPedidoDto.tipoFactura || pedidoExistente.tipoFactura;
+        pedidoExistente.cuitFactura = createPedidoDto.cuitFactura || pedidoExistente.cuitFactura;
+        pedidoExistente.razonSocialFactura = createPedidoDto.razonSocialFactura || pedidoExistente.razonSocialFactura;
+        pedidoExistente.numeroComprobante = numeroComprobante || pedidoExistente.numeroComprobante;
+        pedidoExistente.caeSimulado = caeSimulado || pedidoExistente.caeSimulado;
         
-        // 3. Guardar los nuevos detalles
         for (const det of detallesFinales) {
           await queryRunner.manager.save('PedidoDetalle', { ...det, pedidoId: pedidoExistente.id });
           
-          // Descontar stock nuevo
           const recetaNueva = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
           });
@@ -120,7 +132,6 @@ export class PedidosService {
           }
         }
 
-        // Descontar stock nuevo
         for (const det of detallesFinales) {
           const receta = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
@@ -134,6 +145,7 @@ export class PedidosService {
           }
         }
 
+        // El "as any" soluciona el problema de sobrecarga de TypeScript
         const pedidoNuevo = queryRunner.manager.create(Pedido, {
           total: totalCalculado,
           empresaId,
@@ -147,11 +159,13 @@ export class PedidosService {
           tipoFactura: createPedidoDto.tipoFactura || 'FACTURA_B',
           cuitFactura: createPedidoDto.cuitFactura || undefined,
           razonSocialFactura: createPedidoDto.razonSocialFactura || undefined,
+          numeroComprobante,
+          caeSimulado,
           mesaId: createPedidoDto.mesaId || undefined,
           clienteId: createPedidoDto.clienteId || undefined,
           cajaId: cajaAbierta ? cajaAbierta.id : undefined,
           detalles: detallesFinales as any
-        });
+        } as any);
 
         pedidoGuardado = await queryRunner.manager.save(Pedido, pedidoNuevo);
       }
@@ -167,7 +181,6 @@ export class PedidosService {
     }
   }
 
-  // ... El resto de las funciones se mantienen igual ...
   findAll(empresaId: string, sucursalId: string | null) {
     const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
     return this.pedidoRepository.find({ 
