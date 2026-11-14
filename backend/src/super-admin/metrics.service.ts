@@ -18,7 +18,6 @@ export class MetricsService {
   ) {}
 
   async getDashboardData() {
-    // 1. Optimización: Usamos QueryBuilder para hacer todo en una sola consulta SQL
     const stats = await this.empresaRepository
       .createQueryBuilder('empresa')
       .leftJoin('empresa.plan', 'plan')
@@ -30,12 +29,10 @@ export class MetricsService {
 
     const totalUsuarios = await this.usuarioRepository.count();
 
-    // 2. Salud del Servidor
     const totalMemoriaGB = os.totalmem() / (1024 ** 3);
     const memoriaLibreGB = os.freemem() / (1024 ** 3);
     const usoMemoria = ((totalMemoriaGB - memoriaLibreGB) / totalMemoriaGB) * 100;
 
-    // 3. Auditorías (Últimas 5)
     const auditorias = await this.auditoriaRepository.find({
       order: { fecha: 'DESC' },
       take: 5
@@ -57,8 +54,8 @@ export class MetricsService {
     };
   }
 
-  async registrarLog(accion: string, tipo: string) {
-    const log = this.auditoriaRepository.create({ accion, tipo });
+  async registrarLog(accion: string, tipo: string, adminEmail: string = 'Sistema') {
+    const log = this.auditoriaRepository.create({ accion, tipo, adminEmail });
     await this.auditoriaRepository.save(log);
   }
 }

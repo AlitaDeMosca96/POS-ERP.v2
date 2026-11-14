@@ -6,10 +6,14 @@ export class Auditoria {
   id: string;
 
   @Column({ type: 'varchar', length: 255 })
-  accion: string; // Ej: "Creó la empresa X", "Suspendió a Y"
+  accion: string;
 
   @Column({ type: 'varchar', length: 50 })
-  tipo: string; // 'info', 'success', 'danger'
+  tipo: string; // 'info', 'success', 'danger', 'warning'
+
+  // Nuevo: Quién hizo la acción
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  adminEmail: string;
 
   @CreateDateColumn()
   fecha: Date;
