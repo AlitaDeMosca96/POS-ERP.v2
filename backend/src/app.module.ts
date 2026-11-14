@@ -19,7 +19,8 @@ import { ComprasModule } from './compras/compras.module';
 import { ModificadoresModule } from './modificadores/modificadores.module';
 import { ReportesModule } from './reportes/reportes.module';
 import { ClientesModule } from './clientes/clientes.module';
-import { ReservasModule } from './reservas/reservas.module'; // <-- NUEVO
+import { ReservasModule } from './reservas/reservas.module';
+import { CampaniasModule } from './campanias/campanias.module';
 
 @Module({
   imports: [
@@ -50,7 +51,8 @@ import { ReservasModule } from './reservas/reservas.module'; // <-- NUEVO
     ModificadoresModule,
     ReportesModule,
     ClientesModule,
-    ReservasModule, // <-- NUEVO
+    ReservasModule,
+    CampaniasModule,
   ],
   controllers: [AppController],
   providers: [AppService],

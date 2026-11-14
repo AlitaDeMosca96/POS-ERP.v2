@@ -43,7 +43,6 @@ export class PedidosService {
             where: { producto: { id: det.producto.id } },
             relations: { insumo: true }
           });
-          
           if (recetaVieja.length > 0) {
              for (const item of recetaVieja) {
                const insumo = await this.insumoRepository.findOneBy({ id: item.insumo.id });
@@ -95,14 +94,22 @@ export class PedidosService {
       }
     }
 
+    const esDelivery = !!createPedidoDto.direccionEntrega;
+
     const pedido = this.pedidoRepository.create({
       total: createPedidoDto.total,
       empresaId: createPedidoDto.empresaId,
-      sucursalId: createPedidoDto.sucursalId || undefined, // <-- SUCURSAL
+      sucursalId: createPedidoDto.sucursalId || undefined,
       sucursal: createPedidoDto.sucursalId ? { id: createPedidoDto.sucursalId } : undefined,
       estado: createPedidoDto.estado || 'PAGADO',
       estadoCocina: 'PENDIENTE',
       metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
+      
+      // --- ACÁ ESTABA EL ERROR DE TYPESCRIPT ---
+      direccionEntrega: createPedidoDto.direccionEntrega || undefined, 
+      costoEnvio: createPedidoDto.costoEnvio || 0,
+      estadoDelivery: esDelivery ? 'PENDIENTE' : 'NO_APLICA',
+      
       mesaId: createPedidoDto.mesaId || undefined,
       clienteId: createPedidoDto.clienteId || undefined,
       cliente: createPedidoDto.clienteId ? { id: createPedidoDto.clienteId } : undefined,
@@ -119,9 +126,7 @@ export class PedidosService {
   }
 
   findAll(empresaId: string, sucursalId: string | null) {
-    // Filtramos por sucursal si el usuario pertenece a una
     const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
-
     return this.pedidoRepository.find({ 
       where: query,
       relations: { empresa: true, mesa: true, cliente: true, detalles: { producto: true } },
@@ -130,14 +135,24 @@ export class PedidosService {
   }
 
   findPendientesCocina(empresaId: string, sucursalId: string | null) {
-    // El cocinero solo ve las comandas de SU sucursal
     const query = sucursalId 
       ? { empresaId, sucursalId, estadoCocina: 'PENDIENTE' } 
       : { empresaId, estadoCocina: 'PENDIENTE' };
-
     return this.pedidoRepository.find({
       where: query,
       relations: { mesa: true, detalles: { producto: true } },
+      order: { createdAt: 'ASC' }
+    });
+  }
+
+  findDeliveryPendientes(empresaId: string, sucursalId: string | null) {
+    const query = sucursalId 
+      ? { empresaId, sucursalId, estadoDelivery: 'PENDIENTE' } 
+      : { empresaId, estadoDelivery: 'PENDIENTE' };
+    
+    return this.pedidoRepository.find({
+      where: query,
+      relations: { cliente: true, detalles: { producto: true } },
       order: { createdAt: 'ASC' }
     });
   }
@@ -164,11 +179,7 @@ export class PedidosService {
 
   async findAbiertoByMesa(mesaId: string, empresaId: string) {
     return this.pedidoRepository.findOne({
-      where: {
-        mesaId: mesaId,
-        empresaId,
-        estado: 'ABIERTO'
-      },
+      where: { mesaId: mesaId, empresaId, estado: 'ABIERTO' },
       relations: { detalles: { producto: true } }
     });
   }

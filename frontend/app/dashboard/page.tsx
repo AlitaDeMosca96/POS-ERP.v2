@@ -43,14 +43,12 @@ export default function DashboardPage() {
     const user = JSON.parse(userStr);
     setUsuario(user);
 
-    // Cargamos las sucursales para el selector (solo si es ADMIN)
     if (user.rol === 'ADMIN') {
       fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setSucursales(data));
     }
 
-    // Tomamos la sucursal guardada en el navegador (si existe)
     const sucursalGuardada = localStorage.getItem('sucursalActiva') || '';
     setSucursalActiva(sucursalGuardada);
 
@@ -59,7 +57,6 @@ export default function DashboardPage() {
 
   const cargarReportes = (sucursalId: string) => {
     setLoading(true);
-    // Si hay sucursal, la mandamos por query param. Si está vacío, el backend trae todo.
     const url = sucursalId 
       ? `http://localhost:3000/reportes/resumen?sucursalId=${sucursalId}` 
       : 'http://localhost:3000/reportes/resumen';
@@ -88,8 +85,8 @@ export default function DashboardPage() {
   const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevaSucursal = e.target.value;
     setSucursalActiva(nuevaSucursal);
-    localStorage.setItem('sucursalActiva', nuevaSucursal); // Guardamos la elección
-    cargarReportes(nuevaSucursal); // Recargamos los gráficos
+    localStorage.setItem('sucursalActiva', nuevaSucursal);
+    cargarReportes(nuevaSucursal);
   };
 
   const handleLogout = () => {
@@ -107,7 +104,6 @@ export default function DashboardPage() {
         <h1 className="text-xl font-bold">Mi ERP Gastronómico</h1>
         
         <div className="flex items-center gap-4">
-          {/* SELECTOR DE SUCURSAL (Solo para ADMIN) */}
           {usuario.rol === 'ADMIN' && (
             <div className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded">
               <span className="text-sm font-medium">Sucursal:</span>
@@ -140,6 +136,8 @@ export default function DashboardPage() {
             </h2>
             
             <div className="flex gap-2 flex-wrap justify-end">
+              <button onClick={() => router.push('/campanias')} className="bg-pink-500 hover:bg-pink-600 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Marketing</button>
+              <button onClick={() => router.push('/delivery')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Delivery</button>
               <button onClick={() => router.push('/reservas')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Reservas</button>
               <button onClick={() => router.push('/clientes')} className="bg-pink-600 hover:bg-pink-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Clientes</button>
               <button onClick={() => router.push('/compras')} className="bg-rose-600 hover:bg-rose-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Compras</button>

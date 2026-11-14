@@ -9,11 +9,13 @@ export class CreatePedidoDto {
   pedidoId?: string;
   total: number;
   empresaId: string;
-  sucursalId?: string; // <-- NUEVO
+  sucursalId?: string;
   mesaId?: string;
   clienteId?: string;
   estado?: string;
   estadoCocina?: string;
   metodoPago?: string;
+  direccionEntrega?: string; // <-- NUEVO
+  costoEnvio?: number; // <-- NUEVO
   detalles: CreatePedidoDetalleDto[];
 }

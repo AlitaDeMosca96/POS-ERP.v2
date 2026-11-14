@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import TicketModal from '../../components/TicketModal'; // <-- IMPORTAMOS EL TICKET
+import TicketModal from '../../components/TicketModal';
 
 interface Categoria { id: string; nombre: string; }
 interface Mesa { id: string; nombre: string; estado: string; }
@@ -33,10 +33,16 @@ export default function POSPage() {
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'>('EFECTIVO');
   const [montoRecibido, setMontoRecibido] = useState<string>('');
 
-  // ESTADO PARA EL TICKET
+  // --- ESTADOS PARA DELIVERY ---
+  const [esDelivery, setEsDelivery] = useState(false);
+  const [direccionEntrega, setDireccionEntrega] = useState('');
+  const [costoEnvio, setCostoEnvio] = useState('0');
+  // -----------------------------
+
   const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 
   useEffect(() => {
     if (!token) {
@@ -46,10 +52,14 @@ export default function POSPage() {
 
     const cargarDatos = async () => {
       try {
+        const urlMesas = sucursalActiva 
+          ? `http://localhost:3000/mesas?sucursalId=${sucursalActiva}` 
+          : 'http://localhost:3000/mesas';
+
         const [resProd, resCat, resMesas, resCli] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
           fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } }),
           fetch('http://localhost:3000/clientes', { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
@@ -64,7 +74,7 @@ export default function POSPage() {
     };
     
     cargarDatos();
-  }, [router, token]);
+  }, [router, token, sucursalActiva]);
 
   const handleMesaChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const nuevaMesaId = e.target.value;
@@ -150,7 +160,8 @@ export default function POSPage() {
   };
 
   const calcularTotal = () => {
-    return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
+    const subtotal = carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
+    return subtotal + (esDelivery ? Number(costoEnvio) : 0);
   };
 
   const abrirModalCobro = () => {
@@ -160,6 +171,9 @@ export default function POSPage() {
     }
     setMontoRecibido('');
     setMetodoPago('EFECTIVO');
+    setEsDelivery(false);
+    setDireccionEntrega('');
+    setCostoEnvio('0');
     setModalPagoAbierto(true);
   };
 
@@ -180,7 +194,9 @@ export default function POSPage() {
       alert('Mesa liberada correctamente');
       setMesaActivaId('');
       setPedidoActualId(null);
-      const resMesas = await fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } });
+      
+      const urlMesas = sucursalActiva ? `http://localhost:3000/mesas?sucursalId=${sucursalActiva}` : 'http://localhost:3000/mesas';
+      const resMesas = await fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } });
       setMesas(await resMesas.json());
     } catch (error) {
       console.error(error);
@@ -201,6 +217,9 @@ export default function POSPage() {
       metodoPago: metodoPago,
       mesaId: mesaActivaId || null,
       clienteId: clienteActivoId || null,
+      sucursalId: sucursalActiva || null,
+      direccionEntrega: esDelivery ? direccionEntrega : null,
+      costoEnvio: esDelivery ? Number(costoEnvio) : 0,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -217,8 +236,8 @@ export default function POSPage() {
       });
 
       if (res.ok) {
-        const ventaData = await res.json(); // <-- ATRAPAMOS LA VENTA GUARDADA
-        setVentaExitosa(ventaData); // <-- ABRIMOS EL TICKET
+        const ventaData = await res.json();
+        setVentaExitosa(ventaData);
         
         setCarrito([]);
         setMesaActivaId('');
@@ -226,9 +245,10 @@ export default function POSPage() {
         setPedidoActualId(null);
         setModalPagoAbierto(false);
         
+        const urlMesas = sucursalActiva ? `http://localhost:3000/mesas?sucursalId=${sucursalActiva}` : 'http://localhost:3000/mesas';
         const [resProd, resMesas] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
         setMesas(await resMesas.json());
@@ -247,6 +267,7 @@ export default function POSPage() {
       estado: 'ABIERTO',
       mesaId: mesaActivaId || null,
       clienteId: clienteActivoId || null,
+      sucursalId: sucursalActiva || null,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -268,9 +289,11 @@ export default function POSPage() {
         setMesaActivaId('');
         setClienteActivoId('');
         setPedidoActualId(null);
+        
+        const urlMesas = sucursalActiva ? `http://localhost:3000/mesas?sucursalId=${sucursalActiva}` : 'http://localhost:3000/mesas';
         const [resProd, resMesas] = await Promise.all([
           fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
         setMesas(await resMesas.json());
@@ -288,6 +311,7 @@ export default function POSPage() {
     ? productos 
     : productos.filter(p => p.categoriaId === categoriaActiva);
 
+  const subtotalProductos = carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
   const vuelto = Number(montoRecibido) - calcularTotal();
 
   return (
@@ -413,14 +437,12 @@ export default function POSPage() {
         </div>
       </div>
 
-      {/* MODAL DE MODIFICADORES */}
       {productoModificando && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 no-print">
           <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
             <div className="bg-blue-600 text-white p-4">
               <h3 className="text-xl font-bold">Opciones para: {productoModificando.nombre}</h3>
             </div>
-            
             <div className="p-6 space-y-3 max-h-96 overflow-y-auto">
               {modificadoresDisponibles.map(mod => (
                 <label key={mod.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 cursor-pointer">
@@ -439,7 +461,6 @@ export default function POSPage() {
                 </label>
               ))}
             </div>
-
             <div className="p-4 bg-gray-50 border-t flex gap-3">
               <button onClick={() => setProductoModificando(null)} className="w-1/2 bg-gray-300 text-gray-800 font-bold py-2 rounded hover:bg-gray-400">Cancelar</button>
               <button onClick={confirmarModificadores} className="w-1/2 bg-blue-600 text-white font-bold py-2 rounded hover:bg-blue-700">Agregar al Ticket</button>
@@ -448,15 +469,53 @@ export default function POSPage() {
         </div>
       )}
 
-      {/* MODAL DE PAGO */}
       {modalPagoAbierto && (
         <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center p-4 z-50 no-print">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
             <div className="bg-green-600 text-white p-4 text-center">
               <h3 className="text-2xl font-bold">Cobrar Ticket</h3>
               <p className="text-3xl font-light mt-2">Total: ${calcularTotal()}</p>
             </div>
-            <div className="p-6 space-y-6">
+            <div className="p-6 space-y-6 overflow-y-auto">
+              
+              {/* OPCION DE DELIVERY */}
+              <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={esDelivery}
+                    onChange={(e) => setEsDelivery(e.target.checked)}
+                    className="w-6 h-6 text-orange-600 rounded"
+                  />
+                  <span className="font-bold text-orange-800 text-lg">Es Delivery (Envío a domicilio)</span>
+                </label>
+                
+                {esDelivery && (
+                  <div className="mt-4 space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de Entrega</label>
+                      <input 
+                        type="text" 
+                        value={direccionEntrega} 
+                        onChange={e => setDireccionEntrega(e.target.value)} 
+                        className="w-full border p-2 rounded text-gray-800" 
+                        placeholder="Calle, número, barrio..." 
+                        required={esDelivery}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Costo de Envío</label>
+                      <input 
+                        type="number" 
+                        value={costoEnvio} 
+                        onChange={e => setCostoEnvio(e.target.value)} 
+                        className="w-full border p-2 rounded text-gray-800" 
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
                 <div className="grid grid-cols-3 gap-2">
@@ -465,6 +524,7 @@ export default function POSPage() {
                   <button onClick={() => setMetodoPago('TRANSFERENCIA')} className={`py-2 rounded border font-bold ${metodoPago === 'TRANSFERENCIA' ? 'bg-purple-100 border-purple-500 text-purple-700' : 'bg-gray-50 text-gray-600 hover:bg-gray-100'}`}>QR / Transf.</button>
                 </div>
               </div>
+
               {metodoPago === 'EFECTIVO' && (
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 space-y-3">
                   <div>
@@ -477,22 +537,23 @@ export default function POSPage() {
                   </div>
                 </div>
               )}
-              <div className="flex gap-3 pt-2">
-                <button onClick={() => setModalPagoAbierto(false)} className="w-1/2 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300">Cancelar</button>
-                <button onClick={confirmarPago} disabled={metodoPago === 'EFECTIVO' && Number(montoRecibido) < calcularTotal()} className="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400">Confirmar</button>
-              </div>
+            </div>
+            
+            <div className="p-4 bg-gray-50 border-t flex gap-3">
+              <button onClick={() => setModalPagoAbierto(false)} className="w-1/2 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300">Cancelar</button>
+              <button 
+                onClick={confirmarPago} 
+                disabled={(metodoPago === 'EFECTIVO' && Number(montoRecibido) < calcularTotal()) || (esDelivery && !direccionEntrega)} 
+                className="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 disabled:bg-gray-400"
+              >
+                Confirmar Pago
+              </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* MODAL DEL TICKET */}
-      <TicketModal 
-        isOpen={!!ventaExitosa} 
-        onClose={() => setVentaExitosa(null)} 
-        venta={ventaExitosa} 
-      />
-
+      <TicketModal isOpen={!!ventaExitosa} onClose={() => setVentaExitosa(null)} venta={ventaExitosa} />
     </div>
   );
 }

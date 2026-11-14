@@ -4,7 +4,7 @@ import { PedidoDetalle } from './pedido-detalle.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
 import { Caja } from '../../cajas/entities/caja.entity';
 import { Cliente } from '../../clientes/entities/cliente.entity';
-import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
+import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 
 @Entity('pedidos')
 export class Pedido {
@@ -23,6 +23,17 @@ export class Pedido {
   @Column({ type: 'varchar', default: 'EFECTIVO' })
   metodoPago: string;
 
+  // --- NUEVOS CAMPOS PARA DELIVERY ---
+  @Column({ type: 'varchar', nullable: true })
+  direccionEntrega: string;
+
+  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  costoEnvio: number;
+
+  @Column({ type: 'varchar', default: 'NO_APLICA' })
+  estadoDelivery: string; // NO_APLICA, PENDIENTE, ENVIADO, ENTREGADO
+  // -----------------------------------
+
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;
@@ -30,7 +41,6 @@ export class Pedido {
   @Column('uuid')
   empresaId: string;
 
-  // RELACIÓN CON SUCURSAL
   @ManyToOne(() => Sucursal, { nullable: true })
   @JoinColumn({ name: 'sucursal_id' })
   sucursal: Sucursal;

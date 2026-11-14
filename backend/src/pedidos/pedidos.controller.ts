@@ -12,13 +12,8 @@ export class PedidosController {
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Request() req: any) {
     createPedidoDto.empresaId = req.user.empresaId; 
-    
-    // El pedido se guarda en la sucursal del cajero, o en la que seleccionó el admin
     const targetSucursal = req.user.sucursalId || createPedidoDto.sucursalId;
-    if (targetSucursal) {
-      createPedidoDto.sucursalId = targetSucursal;
-    }
-    
+    if (targetSucursal) createPedidoDto.sucursalId = targetSucursal;
     return this.pedidosService.create(createPedidoDto, req.user.id); 
   }
 
@@ -34,9 +29,22 @@ export class PedidosController {
     return this.pedidosService.findPendientesCocina(req.user.empresaId, targetSucursal);
   }
 
+  // --- NUEVA RUTA ---
+  @Get('delivery')
+  findDelivery(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
+    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    return this.pedidosService.findDeliveryPendientes(req.user.empresaId, targetSucursal);
+  }
+  // ------------------
+
   @Patch(':id/cocina')
   marcarListo(@Param('id') id: string) {
     return this.pedidosService.marcarListo(id);
+  }
+
+  @Patch(':id/delivery')
+  actualizarEstadoDelivery(@Param('id') id: string, @Body('estadoDelivery') estadoDelivery: string) {
+    return this.pedidosService.update(id, { estadoDelivery });
   }
 
   @Get('mesa/:mesaId')
