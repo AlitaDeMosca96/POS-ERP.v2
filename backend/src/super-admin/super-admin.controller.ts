@@ -7,6 +7,12 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 export class SuperAdminController {
   constructor(private readonly superAdminService: SuperAdminService) {}
 
+  @Get('metrics')
+  getDashboardMetrics(@Request() req: any) {
+    if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');
+    return this.superAdminService.getDashboardMetrics();
+  }
+
   @Get('empresas')
   getEmpresas(@Request() req: any) {
     if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');

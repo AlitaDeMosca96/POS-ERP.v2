@@ -5,6 +5,7 @@ import { Empresa } from '../empresas/entities/empresa.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
 import { JwtService } from '@nestjs/jwt';
+import * as os from 'os'; // <-- NUEVO
 
 @Injectable()
 export class SuperAdminService {
@@ -18,10 +19,63 @@ export class SuperAdminService {
     private readonly jwtService: JwtService,
   ) {}
 
+  async getDashboardMetrics() {
+    // 1. Métricas SaaS
+    const empresas = await this.empresaRepository.find({ relations: { plan: true } });
+    
+    let mrr = 0;
+    let empresasActivas = 0;
+    let empresasSuspendidas = 0;
+
+    empresas.forEach(emp => {
+      if (emp.activa) {
+        empresasActivas++;
+        if (emp.plan) {
+          mrr += Number(emp.plan.precioMensual);
+        }
+      } else {
+        empresasSuspendidas++;
+      }
+    });
+
+    const totalUsuarios = await this.usuarioRepository.count();
+    
+    // 2. Salud del Servidor (Hardware)
+    const totalMemoriaGB = os.totalmem() / (1024 ** 3);
+    const memoriaLibreGB = os.freemem() / (1024 ** 3);
+    const usoMemoriaPorcentaje = ((totalMemoriaGB - memoriaLibreGB) / totalMemoriaGB) * 100;
+    
+    const cargaCpu = os.loadavg()[0]; // Carga promedio en el último minuto
+    
+    // 3. Últimos 5 clientes registrados
+    const ultimosClientes = await this.empresaRepository.find({
+      order: { createdAt: 'DESC' },
+      take: 5
+    });
+
+    return {
+      mrr,
+      empresasActivas,
+      empresasSuspendidas,
+      totalUsuarios,
+      servidor: {
+        usoMemoria: usoMemoriaPorcentaje.toFixed(1),
+        memoriaTotal: totalMemoriaGB.toFixed(1),
+        cargaCpu: cargaCpu.toFixed(2),
+        plataforma: os.platform(),
+        uptimeHoras: (os.uptime() / 3600).toFixed(1)
+      },
+      ultimosClientes: ultimosClientes.map(c => ({
+        nombre: c.nombre,
+        fecha: c.createdAt
+      }))
+    };
+  }
+
   async getEmpresas() {
     const empresas = await this.empresaRepository.find({ 
       order: { createdAt: 'DESC' },
-      relations: { plan: true } // <-- Traemos el plan
+      relations: { plan: true }
     });
     
     const resultado = await Promise.all(empresas.map(async (emp) => {
@@ -37,7 +91,7 @@ export class SuperAdminService {
         usuarios: usuariosCount,
         totalVentas,
         fechaAlta: emp.createdAt,
-        plan: emp.plan ? emp.plan.nombre : 'Sin Plan' // <-- Lo enviamos al frontend
+        plan: emp.plan ? emp.plan.nombre : 'Sin Plan'
       };
     }));
 
@@ -50,7 +104,7 @@ export class SuperAdminService {
       cuit: data.cuit,
       monedaBase: 'ARS',
       activa: true,
-      planId: data.planId || undefined, // <-- Asignamos el plan
+      planId: data.planId || undefined,
       plan: data.planId ? { id: data.planId } : undefined
     });
     await this.empresaRepository.save(empresa);
