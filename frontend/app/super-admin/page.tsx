@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Sidebar from './components/Sidebar';
+import Header from './components/Header';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
 
@@ -10,6 +11,7 @@ export default function SuperAdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [seccionActiva, setSeccionActiva] = useState('dashboard');
+  const [searchQuery, setSearchQuery] = useState(''); // <-- NUEVO ESTADO PARA EL BUSCADOR
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
@@ -33,28 +35,38 @@ export default function SuperAdminPage() {
     router.push('/master-login');
   };
 
+  // FUNCIÓN DEL BUSCADOR
+  const handleSearch = (query: string) => {
+    setSearchQuery(query);
+    setSeccionActiva('clientes'); // Te lleva a clientes
+    // En el próximo paso, haremos que ClientesView filtre por este query
+  };
+
   if (loading) return <div className="min-h-screen bg-[#050505] text-[#D4AF37] flex items-center justify-center text-xl tracking-widest uppercase">Iniciando Búnker...</div>;
+
+  const titulos: Record<string, string> = {
+    dashboard: 'Dashboard Global',
+    clientes: 'Gestión de Clientes',
+    planes: 'Planes y Suscripciones',
+    seguridad: 'Seguridad y Auditoría',
+    operaciones: 'Operaciones del Sistema',
+    equipo: 'Equipo Interno',
+    partners: 'Red de Partners',
+    config: 'Configuración Global'
+  };
 
   return (
     <div className="flex h-screen bg-[#050505] text-gray-300 font-sans selection:bg-[#D4AF37] selection:text-black overflow-hidden">
       <Sidebar seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} onLogout={handleLogout} />
 
       <main className="flex-1 overflow-y-auto p-8 relative">
-        <header className="mb-8 flex justify-between items-center">
-          <div>
-            <h2 className="text-2xl font-light text-white uppercase tracking-widest">
-              {seccionActiva === 'dashboard' ? 'Dashboard Global' : seccionActiva === 'clientes' ? 'Gestión de Clientes' : seccionActiva}
-            </h2>
-            <p className="text-gray-500 text-sm mt-1">Monitoreo en tiempo real de tu red</p>
-          </div>
-          <div className="flex items-center gap-2 bg-[#111] border border-gray-800 px-4 py-2 rounded-lg">
-            <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-            <span className="text-xs text-gray-400 font-medium">SISTEMA ONLINE</span>
-          </div>
-        </header>
+        
+        {/* LE PASAMOS LA FUNCIÓN DE BÚSQUEDA AL HEADER */}
+        <Header title={titulos[seccionActiva]} onSearch={handleSearch} />
 
-        {seccionActiva === 'dashboard' && <DashboardView />}
-        {seccionActiva === 'clientes' && <ClientesView />}
+        {seccionActiva === 'dashboard' && <DashboardView setSeccionActiva={setSeccionActiva} />}
+        
+        {seccionActiva === 'clientes' && <ClientesView searchQuery={searchQuery} />}
         
         {seccionActiva !== 'dashboard' && seccionActiva !== 'clientes' && (
           <div className="bg-[#0a0a0a] p-12 rounded-xl border border-gray-800 flex flex-col items-center justify-center text-center h-[60vh]">

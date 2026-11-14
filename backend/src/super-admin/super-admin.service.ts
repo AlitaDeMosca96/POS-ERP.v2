@@ -4,8 +4,9 @@ import { Repository } from 'typeorm';
 import { Empresa } from '../empresas/entities/empresa.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
+import { Auditoria } from './entities/auditoria.entity'; // <-- NUEVO
 import { JwtService } from '@nestjs/jwt';
-import * as os from 'os'; // <-- NUEVO
+import * as os from 'os';
 
 @Injectable()
 export class SuperAdminService {
@@ -16,11 +17,17 @@ export class SuperAdminService {
     private readonly usuarioRepository: Repository<Usuario>,
     @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
+    @InjectRepository(Auditoria) // <-- NUEVO
+    private readonly auditoriaRepository: Repository<Auditoria>,
     private readonly jwtService: JwtService,
   ) {}
 
+  private async registrarLog(accion: string, tipo: string) {
+    const log = this.auditoriaRepository.create({ accion, tipo });
+    await this.auditoriaRepository.save(log);
+  }
+
   async getDashboardMetrics() {
-    // 1. Métricas SaaS
     const empresas = await this.empresaRepository.find({ relations: { plan: true } });
     
     let mrr = 0;
@@ -30,9 +37,7 @@ export class SuperAdminService {
     empresas.forEach(emp => {
       if (emp.activa) {
         empresasActivas++;
-        if (emp.plan) {
-          mrr += Number(emp.plan.precioMensual);
-        }
+        if (emp.plan) mrr += Number(emp.plan.precioMensual);
       } else {
         empresasSuspendidas++;
       }
@@ -40,16 +45,13 @@ export class SuperAdminService {
 
     const totalUsuarios = await this.usuarioRepository.count();
     
-    // 2. Salud del Servidor (Hardware)
     const totalMemoriaGB = os.totalmem() / (1024 ** 3);
     const memoriaLibreGB = os.freemem() / (1024 ** 3);
     const usoMemoriaPorcentaje = ((totalMemoriaGB - memoriaLibreGB) / totalMemoriaGB) * 100;
     
-    const cargaCpu = os.loadavg()[0]; // Carga promedio en el último minuto
-    
-    // 3. Últimos 5 clientes registrados
-    const ultimosClientes = await this.empresaRepository.find({
-      order: { createdAt: 'DESC' },
+    // Traemos las últimas 5 acciones reales
+    const auditorias = await this.auditoriaRepository.find({
+      order: { fecha: 'DESC' },
       take: 5
     });
 
@@ -61,14 +63,11 @@ export class SuperAdminService {
       servidor: {
         usoMemoria: usoMemoriaPorcentaje.toFixed(1),
         memoriaTotal: totalMemoriaGB.toFixed(1),
-        cargaCpu: cargaCpu.toFixed(2),
+        cargaCpu: os.loadavg()[0].toFixed(2),
         plataforma: os.platform(),
         uptimeHoras: (os.uptime() / 3600).toFixed(1)
       },
-      ultimosClientes: ultimosClientes.map(c => ({
-        nombre: c.nombre,
-        fecha: c.createdAt
-      }))
+      auditorias // <-- DEVOLVEMOS EL HISTORIAL REAL
     };
   }
 
@@ -118,6 +117,9 @@ export class SuperAdminService {
     });
     await this.usuarioRepository.save(admin);
 
+    // REGISTRAMOS LA ACCIÓN
+    await this.registrarLog(`Se creó la empresa: ${empresa.nombre}`, 'success');
+
     return empresa;
   }
 
@@ -127,34 +129,33 @@ export class SuperAdminService {
 
     empresa.activa = !empresa.activa;
     await this.empresaRepository.save(empresa);
+
+    // REGISTRAMOS LA ACCIÓN
+    const accion = empresa.activa ? 'activó' : 'suspendió';
+    const tipo = empresa.activa ? 'info' : 'danger';
+    await this.registrarLog(`Super Admin ${accion} a la empresa: ${empresa.nombre}`, tipo);
+
     return empresa;
   }
 
   async impersonarAdmin(empresaId: string) {
     const admin = await this.usuarioRepository.findOne({ 
-      where: { empresaId, rol: 'ADMIN' } 
+      where: { empresaId, rol: 'ADMIN' },
+      relations: { empresa: true }
     });
 
     if (!admin) throw new NotFoundException('No se encontró un administrador para esta empresa');
 
+    // REGISTRAMOS LA ACCIÓN
+    await this.registrarLog(`Super Admin ingresó como soporte a: ${admin.empresa.nombre}`, 'warning');
+
     const payload = { 
-      sub: admin.id, 
-      email: admin.email, 
-      rol: admin.rol, 
-      empresaId: admin.empresaId,
-      sucursalId: admin.sucursalId
+      sub: admin.id, email: admin.email, rol: admin.rol, empresaId: admin.empresaId, sucursalId: admin.sucursalId
     };
     
     return {
       access_token: this.jwtService.sign(payload),
-      usuario: {
-        id: admin.id,
-        nombre: admin.nombre,
-        email: admin.email,
-        rol: admin.rol,
-        empresaId: admin.empresaId,
-        sucursalId: admin.sucursalId
-      }
+      usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol, empresaId: admin.empresaId, sucursalId: admin.sucursalId }
     };
   }
 }

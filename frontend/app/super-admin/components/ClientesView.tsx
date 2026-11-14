@@ -3,24 +3,10 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-interface Empresa {
-  id: string;
-  nombre: string;
-  cuit: string;
-  activa: boolean;
-  usuarios: number;
-  totalVentas: number;
-  fechaAlta: string;
-  plan?: string;
-}
+interface Empresa { id: string; nombre: string; cuit: string; activa: boolean; usuarios: number; totalVentas: number; fechaAlta: string; plan?: string; }
+interface Plan { id: string; nombre: string; precioMensual: number; }
 
-interface Plan {
-  id: string;
-  nombre: string;
-  precioMensual: number;
-}
-
-export default function ClientesView() {
+export default function ClientesView({ searchQuery = '' }: { searchQuery?: string }) {
   const router = useRouter();
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
@@ -36,9 +22,7 @@ export default function ClientesView() {
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
-  useEffect(() => {
-    cargarDatos();
-  }, []);
+  useEffect(() => { cargarDatos(); }, []);
 
   const cargarDatos = async () => {
     try {
@@ -53,10 +37,7 @@ export default function ClientesView() {
         if (data.length > 0) setPlanId(data[0].id);
       }
       setLoading(false);
-    } catch (error) {
-      console.error(error);
-      setLoading(false);
-    }
+    } catch (error) { console.error(error); setLoading(false); }
   };
 
   const handleCrearEmpresa = async (e: React.FormEvent) => {
@@ -73,32 +54,22 @@ export default function ClientesView() {
         setNombre(''); setCuit(''); setAdminNombre(''); setAdminEmail(''); setAdminPassword('');
         cargarDatos();
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const handleToggleEstado = async (id: string, estadoActual: boolean) => {
     const accion = estadoActual ? 'SUSPENDER' : 'ACTIVAR';
     if (!confirm(`¿Estás seguro de ${accion} esta empresa?`)) return;
     try {
-      await fetch(`http://localhost:3000/super-admin/empresas/${id}/toggle`, {
-        method: 'PATCH',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await fetch(`http://localhost:3000/super-admin/empresas/${id}/toggle`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
       cargarDatos();
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   const handleImpersonar = async (id: string) => {
     if (!confirm('¿Entrar como soporte a esta empresa?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/super-admin/empresas/${id}/impersonar`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await fetch(`http://localhost:3000/super-admin/empresas/${id}/impersonar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
         localStorage.setItem('token', data.access_token);
@@ -106,17 +77,23 @@ export default function ClientesView() {
         localStorage.removeItem('sucursalActiva');
         router.push('/dashboard');
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { console.error(error); }
   };
 
   if (loading) return <div className="text-[#D4AF37] animate-pulse">Cargando clientes...</div>;
 
+  // FILTRADO POR BUSCADOR
+  const empresasFiltradas = empresas.filter(e => 
+    e.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    e.cuit.includes(searchQuery)
+  );
+
   return (
     <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 shadow-xl overflow-hidden">
       <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-        <h2 className="text-lg font-light text-white uppercase tracking-widest">Directorio de Empresas</h2>
+        <h2 className="text-lg font-light text-white uppercase tracking-widest">
+          Directorio de Empresas {searchQuery && `(Filtrado: ${searchQuery})`}
+        </h2>
         <button onClick={() => setModalAbierto(true)} className="bg-[#111] border border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-bold py-2 px-6 rounded transition-all text-xs uppercase tracking-widest">
           + Nueva Empresa
         </button>
@@ -134,18 +111,14 @@ export default function ClientesView() {
           </tr>
         </thead>
         <tbody>
-          {empresas.map(emp => (
+          {empresasFiltradas.map(emp => (
             <tr key={emp.id} className="border-b border-gray-800/50 hover:bg-[#111] transition-colors">
               <td className="p-4">
                 <p className="font-medium text-gray-200 text-base">{emp.nombre}</p>
                 <p className="text-xs text-gray-600">{emp.cuit}</p>
               </td>
-              <td className="p-4 text-center">
-                <span className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs">{emp.plan}</span>
-              </td>
-              <td className="p-4 text-center">
-                <span className="bg-gray-900 text-gray-400 px-3 py-1 rounded-full text-xs font-bold border border-gray-800">{emp.usuarios}</span>
-              </td>
+              <td className="p-4 text-center"><span className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs">{emp.plan}</span></td>
+              <td className="p-4 text-center"><span className="bg-gray-900 text-gray-400 px-3 py-1 rounded-full text-xs font-bold border border-gray-800">{emp.usuarios}</span></td>
               <td className="p-4 text-right font-light text-[#D4AF37]">${emp.totalVentas.toFixed(2)}</td>
               <td className="p-4 text-center">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${emp.activa ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-red-900/20 text-red-400 border-red-900'}`}>
@@ -153,15 +126,14 @@ export default function ClientesView() {
                 </span>
               </td>
               <td className="p-4 text-center flex flex-col gap-2 items-center">
-                <button onClick={() => handleImpersonar(emp.id)} className="text-xs bg-[#111] border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-1 rounded transition w-full">
-                  Entrar (Soporte)
-                </button>
-                <button onClick={() => handleToggleEstado(emp.id, emp.activa)} className={`text-xs px-3 py-1 rounded transition w-full border ${emp.activa ? 'bg-red-900/20 border-red-900 text-red-400 hover:bg-red-900/40' : 'bg-green-900/20 border-green-900 text-green-400 hover:bg-green-900/40'}`}>
-                  {emp.activa ? 'Suspender' : 'Activar'}
-                </button>
+                <button onClick={() => handleImpersonar(emp.id)} className="text-xs bg-[#111] border border-gray-700 text-gray-300 hover:text-white hover:border-gray-500 px-3 py-1 rounded transition w-full">Entrar (Soporte)</button>
+                <button onClick={() => handleToggleEstado(emp.id, emp.activa)} className={`text-xs px-3 py-1 rounded transition w-full border ${emp.activa ? 'bg-red-900/20 border-red-900 text-red-400 hover:bg-red-900/40' : 'bg-green-900/20 border-green-900 text-green-400 hover:bg-green-900/40'}`}>{emp.activa ? 'Suspender' : 'Activar'}</button>
               </td>
             </tr>
           ))}
+          {empresasFiltradas.length === 0 && (
+            <tr><td colSpan={6} className="p-8 text-center text-gray-500">No se encontraron empresas.</td></tr>
+          )}
         </tbody>
       </table>
 
