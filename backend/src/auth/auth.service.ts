@@ -3,7 +3,7 @@ import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
-import { generateSecret as generateTotpSecret, generateURI, verify } from 'otplib';
+import { authenticator } from 'otplib'; // <-- IMPORTAMOS EL OBJETO
 import * as qrcode from 'qrcode';
 
 @Injectable()
@@ -17,11 +17,9 @@ export class AuthService {
     const usuario = await this.usuariosService.findByEmail(loginDto.email);
     if (!usuario) throw new UnauthorizedException('Credenciales incorrectas');
 
-    // --- NUEVA VALIDACIÓN: EMPRESA ACTIVA ---
     if (usuario.empresa && !usuario.empresa.activa) {
       throw new UnauthorizedException('La cuenta de su empresa se encuentra suspendida. Contacte a soporte.');
     }
-    // ----------------------------------------
 
     const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
     if (!isPasswordValid) throw new UnauthorizedException('Credenciales incorrectas');
@@ -61,7 +59,7 @@ export class AuthService {
       if (!loginDto.twoFactorCode) {
         throw new BadRequestException('Se requiere código 2FA');
       }
-      const isValid = await verify({ token: loginDto.twoFactorCode, secret: usuario.twoFactorSecret });
+      const isValid = authenticator.verify({ token: loginDto.twoFactorCode, secret: usuario.twoFactorSecret });
       if (!isValid) {
         throw new UnauthorizedException('Código 2FA inválido');
       }
@@ -87,10 +85,15 @@ export class AuthService {
   }
 
   async generate2FASecret(userId: string, email: string) {
-    const secret = generateTotpSecret();
+    // USAMOS authenticator.generateSecret()
+    const secret = authenticator.generateSecret();
+    
     await this.usuariosService.update(userId, { twoFactorSecret: secret, twoFactorEnabled: false } as any);
-    const otpauthUrl = generateURI({ issuer: 'MasterCtrl SaaS', label: email, secret });
+
+    // USAMOS authenticator.keyuri()
+    const otpauthUrl = authenticator.keyuri(email, 'MasterCtrl SaaS', secret);
     const qrCodeDataUrl = await qrcode.toDataURL(otpauthUrl);
+
     return { secret, qrCodeDataUrl };
   }
 
@@ -98,7 +101,7 @@ export class AuthService {
     const usuario = await this.usuariosService.findOne(userId);
     if (!usuario || !usuario.twoFactorSecret) throw new BadRequestException('No hay secreto generado');
 
-    const isValid = await verify({ token: code, secret: usuario.twoFactorSecret });
+    const isValid = authenticator.verify({ token: code, secret: usuario.twoFactorSecret });
     if (!isValid) throw new UnauthorizedException('Código inválido. Intentá de nuevo.');
 
     await this.usuariosService.update(userId, { twoFactorEnabled: true } as any);
