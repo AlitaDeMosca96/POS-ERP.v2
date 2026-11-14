@@ -105,10 +105,15 @@ export class PedidosService {
       estadoCocina: 'PENDIENTE',
       metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
       
-      // --- ACÁ ESTABA EL ERROR DE TYPESCRIPT ---
+      // DELIVERY
       direccionEntrega: createPedidoDto.direccionEntrega || undefined, 
       costoEnvio: createPedidoDto.costoEnvio || 0,
       estadoDelivery: esDelivery ? 'PENDIENTE' : 'NO_APLICA',
+      
+      // FACTURACIÓN
+      tipoFactura: createPedidoDto.tipoFactura || 'FACTURA_B',
+      cuitFactura: createPedidoDto.cuitFactura || undefined,
+      razonSocialFactura: createPedidoDto.razonSocialFactura || undefined,
       
       mesaId: createPedidoDto.mesaId || undefined,
       clienteId: createPedidoDto.clienteId || undefined,

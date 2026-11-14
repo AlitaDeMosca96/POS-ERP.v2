@@ -23,7 +23,7 @@ export class Pedido {
   @Column({ type: 'varchar', default: 'EFECTIVO' })
   metodoPago: string;
 
-  // --- NUEVOS CAMPOS PARA DELIVERY ---
+  // --- DELIVERY ---
   @Column({ type: 'varchar', nullable: true })
   direccionEntrega: string;
 
@@ -31,8 +31,19 @@ export class Pedido {
   costoEnvio: number;
 
   @Column({ type: 'varchar', default: 'NO_APLICA' })
-  estadoDelivery: string; // NO_APLICA, PENDIENTE, ENVIADO, ENTREGADO
-  // -----------------------------------
+  estadoDelivery: string;
+
+  // --- FACTURACION ---
+  @Column({ type: 'varchar', default: 'FACTURA_B' })
+  tipoFactura: string; // FACTURA_A, FACTURA_B, FACTURA_C
+
+  @Column({ type: 'varchar', nullable: true })
+  cuitFactura: string;
+
+  @Column({ type: 'varchar', nullable: true })
+  razonSocialFactura: string;
+
+  // -----------------------------
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })

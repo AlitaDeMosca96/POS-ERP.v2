@@ -15,7 +15,15 @@ export class CreatePedidoDto {
   estado?: string;
   estadoCocina?: string;
   metodoPago?: string;
-  direccionEntrega?: string; // <-- NUEVO
-  costoEnvio?: number; // <-- NUEVO
+  
+  // Delivery
+  direccionEntrega?: string;
+  costoEnvio?: number;
+  
+  // Facturación
+  tipoFactura?: string;
+  cuitFactura?: string;
+  razonSocialFactura?: string;
+  
   detalles: CreatePedidoDetalleDto[];
 }

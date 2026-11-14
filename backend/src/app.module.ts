@@ -21,6 +21,7 @@ import { ReportesModule } from './reportes/reportes.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { ReservasModule } from './reservas/reservas.module';
 import { CampaniasModule } from './campanias/campanias.module';
+import { SuperAdminModule } from './super-admin/super-admin.module'; // <-- REGISTRADO
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { CampaniasModule } from './campanias/campanias.module';
     ClientesModule,
     ReservasModule,
     CampaniasModule,
+    SuperAdminModule, // <-- REGISTRADO
   ],
   controllers: [AppController],
   providers: [AppService],

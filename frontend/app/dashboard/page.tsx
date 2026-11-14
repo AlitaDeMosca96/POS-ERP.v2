@@ -43,7 +43,7 @@ export default function DashboardPage() {
     const user = JSON.parse(userStr);
     setUsuario(user);
 
-    if (user.rol === 'ADMIN') {
+    if (user.rol === 'ADMIN' || user.rol === 'SUPER_ADMIN') {
       fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setSucursales(data));
@@ -104,7 +104,19 @@ export default function DashboardPage() {
         <h1 className="text-xl font-bold">Mi ERP Gastronómico</h1>
         
         <div className="flex items-center gap-4">
-          {usuario.rol === 'ADMIN' && (
+          
+          {/* BOTÓN MAESTRO (Solo para SUPER_ADMIN) */}
+          {usuario.rol === 'SUPER_ADMIN' && (
+            <button 
+              onClick={() => router.push('/super-admin')}
+              className="bg-gray-900 hover:bg-black text-white font-bold px-4 py-1 rounded shadow transition border border-gray-700 flex items-center gap-2"
+            >
+              <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
+              Ir al Panel Maestro
+            </button>
+          )}
+
+          {(usuario.rol === 'ADMIN' || usuario.rol === 'SUPER_ADMIN') && (
             <div className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded">
               <span className="text-sm font-medium">Sucursal:</span>
               <select 

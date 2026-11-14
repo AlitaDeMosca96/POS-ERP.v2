@@ -33,11 +33,15 @@ export default function POSPage() {
   const [metodoPago, setMetodoPago] = useState<'EFECTIVO' | 'TARJETA' | 'TRANSFERENCIA'>('EFECTIVO');
   const [montoRecibido, setMontoRecibido] = useState<string>('');
 
-  // --- ESTADOS PARA DELIVERY ---
+  // --- DELIVERY ---
   const [esDelivery, setEsDelivery] = useState(false);
   const [direccionEntrega, setDireccionEntrega] = useState('');
   const [costoEnvio, setCostoEnvio] = useState('0');
-  // -----------------------------
+
+  // --- FACTURACIÓN ---
+  const [tipoFactura, setTipoFactura] = useState<'FACTURA_A' | 'FACTURA_B' | 'FACTURA_C'>('FACTURA_B');
+  const [cuitFactura, setCuitFactura] = useState('');
+  const [razonSocialFactura, setRazonSocialFactura] = useState('');
 
   const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
@@ -174,6 +178,9 @@ export default function POSPage() {
     setEsDelivery(false);
     setDireccionEntrega('');
     setCostoEnvio('0');
+    setTipoFactura('FACTURA_B'); // Default
+    setCuitFactura('');
+    setRazonSocialFactura('');
     setModalPagoAbierto(true);
   };
 
@@ -209,6 +216,10 @@ export default function POSPage() {
       alert('El monto recibido es menor al total a pagar.');
       return;
     }
+    if (tipoFactura !== 'FACTURA_B' && !cuitFactura) {
+      alert('Por favor, ingresá el CUIT para la Factura A o C.');
+      return;
+    }
 
     const pedidoData = {
       pedidoId: pedidoActualId,
@@ -220,6 +231,9 @@ export default function POSPage() {
       sucursalId: sucursalActiva || null,
       direccionEntrega: esDelivery ? direccionEntrega : null,
       costoEnvio: esDelivery ? Number(costoEnvio) : 0,
+      tipoFactura,
+      cuitFactura: tipoFactura !== 'FACTURA_B' ? cuitFactura : null,
+      razonSocialFactura: tipoFactura !== 'FACTURA_B' ? razonSocialFactura : null,
       detalles: carrito.map(item => ({
         productoId: item.id,
         cantidad: item.cantidad,
@@ -476,9 +490,42 @@ export default function POSPage() {
               <h3 className="text-2xl font-bold">Cobrar Ticket</h3>
               <p className="text-3xl font-light mt-2">Total: ${calcularTotal()}</p>
             </div>
-            <div className="p-6 space-y-6 overflow-y-auto">
+            <div className="p-6 space-y-5 overflow-y-auto">
               
-              {/* OPCION DE DELIVERY */}
+              {/* FACTURACIÓN */}
+              <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
+                <label className="block text-sm font-bold text-gray-700 mb-2">Comprobante Fiscal</label>
+                <select 
+                  value={tipoFactura} 
+                  onChange={e => setTipoFactura(e.target.value as any)}
+                  className="w-full border p-2 rounded text-gray-800 font-medium mb-3"
+                >
+                  <option value="FACTURA_B">Factura B (Consumidor Final)</option>
+                  <option value="FACTURA_A">Factura A (Responsable Inscripto)</option>
+                  <option value="FACTURA_C">Factura C (Monotributista)</option>
+                </select>
+
+                {tipoFactura !== 'FACTURA_B' && (
+                  <div className="space-y-3 mt-3">
+                    <input 
+                      type="text" 
+                      placeholder="CUIT (Ej: 20123456789)" 
+                      value={cuitFactura}
+                      onChange={e => setCuitFactura(e.target.value)}
+                      className="w-full border p-2 rounded text-gray-800"
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="Razón Social" 
+                      value={razonSocialFactura}
+                      onChange={e => setRazonSocialFactura(e.target.value)}
+                      className="w-full border p-2 rounded text-gray-800"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* DELIVERY */}
               <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
                 <label className="flex items-center gap-3 cursor-pointer">
                   <input 
@@ -487,35 +534,31 @@ export default function POSPage() {
                     onChange={(e) => setEsDelivery(e.target.checked)}
                     className="w-6 h-6 text-orange-600 rounded"
                   />
-                  <span className="font-bold text-orange-800 text-lg">Es Delivery (Envío a domicilio)</span>
+                  <span className="font-bold text-orange-800 text-lg">Es Delivery</span>
                 </label>
                 
                 {esDelivery && (
                   <div className="mt-4 space-y-3">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Dirección de Entrega</label>
-                      <input 
-                        type="text" 
-                        value={direccionEntrega} 
-                        onChange={e => setDireccionEntrega(e.target.value)} 
-                        className="w-full border p-2 rounded text-gray-800" 
-                        placeholder="Calle, número, barrio..." 
-                        required={esDelivery}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Costo de Envío</label>
-                      <input 
-                        type="number" 
-                        value={costoEnvio} 
-                        onChange={e => setCostoEnvio(e.target.value)} 
-                        className="w-full border p-2 rounded text-gray-800" 
-                      />
-                    </div>
+                    <input 
+                      type="text" 
+                      value={direccionEntrega} 
+                      onChange={e => setDireccionEntrega(e.target.value)} 
+                      className="w-full border p-2 rounded text-gray-800" 
+                      placeholder="Dirección de entrega..." 
+                      required={esDelivery}
+                    />
+                    <input 
+                      type="number" 
+                      value={costoEnvio} 
+                      onChange={e => setCostoEnvio(e.target.value)} 
+                      className="w-full border p-2 rounded text-gray-800" 
+                      placeholder="Costo de envío"
+                    />
                   </div>
                 )}
               </div>
 
+              {/* PAGO */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Método de Pago</label>
                 <div className="grid grid-cols-3 gap-2">
