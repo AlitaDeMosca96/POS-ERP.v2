@@ -14,28 +14,26 @@ export class PedidosController {
     createPedidoDto.empresaId = req.user.empresaId; 
     const targetSucursal = req.user.sucursalId || createPedidoDto.sucursalId;
     if (targetSucursal) createPedidoDto.sucursalId = targetSucursal;
-    return this.pedidosService.create(createPedidoDto, req.user.id); 
+    return this.pedidosService.create(createPedidoDto, req.user.id, req.user.empresaId); 
   }
 
   @Get()
   findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
     return this.pedidosService.findAll(req.user.empresaId, targetSucursal);
   }
 
   @Get('cocina')
   findPendientesCocina(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
     return this.pedidosService.findPendientesCocina(req.user.empresaId, targetSucursal);
   }
 
-  // --- NUEVA RUTA ---
   @Get('delivery')
   findDelivery(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
     return this.pedidosService.findDeliveryPendientes(req.user.empresaId, targetSucursal);
   }
-  // ------------------
 
   @Patch(':id/cocina')
   marcarListo(@Param('id') id: string) {
@@ -43,8 +41,8 @@ export class PedidosController {
   }
 
   @Patch(':id/delivery')
-  actualizarEstadoDelivery(@Param('id') id: string, @Body('estadoDelivery') estadoDelivery: string) {
-    return this.pedidosService.update(id, { estadoDelivery });
+  actualizarEstadoDelivery(@Param('id') id: string, @Body('estadoDelivery') estadoDelivery: string, @Request() req: any) {
+    return this.pedidosService.update(id, { estadoDelivery }, req.user.empresaId);
   }
 
   @Get('mesa/:mesaId')
@@ -53,17 +51,17 @@ export class PedidosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.pedidosService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.pedidosService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updatePedidoDto: UpdatePedidoDto) {
-    return this.pedidosService.update(id, updatePedidoDto);
+  update(@Param('id') id: string, @Body() updatePedidoDto: UpdatePedidoDto, @Request() req: any) {
+    return this.pedidosService.update(id, updatePedidoDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.pedidosService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.pedidosService.remove(id, req.user.empresaId);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -43,14 +43,23 @@ export class UsuariosService {
     });
   }
 
-  findByEmail(email: string) {
-    return this.usuarioRepository.findOne({ 
-      where: { email },
-      relations: { empresa: true, sucursal: true }
-    });
+  // EXCEPCIÓN PARA EL LOGIN: Traemos la contraseña y el 2FA explícitamente
+  async findByEmail(email: string) {
+    return this.usuarioRepository.createQueryBuilder('usuario')
+      .addSelect('usuario.password')
+      .addSelect('usuario.twoFactorSecret')
+      .leftJoinAndSelect('usuario.empresa', 'empresa')
+      .leftJoinAndSelect('usuario.sucursal', 'sucursal')
+      .where('usuario.email = :email', { email })
+      .getOne();
   }
 
-  update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
+  async update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
+    // Si el DTO trae una contraseña, la encriptamos antes de guardar
+    if (updateUsuarioDto.password) {
+      const salt = await bcrypt.genSalt(10);
+      updateUsuarioDto.password = await bcrypt.hash(updateUsuarioDto.password, salt);
+    }
     return this.usuarioRepository.update(id, updateUsuarioDto);
   }
 

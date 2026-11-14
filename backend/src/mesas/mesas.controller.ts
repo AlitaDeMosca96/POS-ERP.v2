@@ -20,8 +20,8 @@ export class MesasController {
 
   @Get()
   findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    // Si es cajero, manda su sucursal. Si es admin, usa la que seleccionó (o null para ver todo)
-    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    // SOLO usamos el de la URL si es Admin. Si es empleado, mandamos el del Token.
+    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
     return this.mesasService.findAll(req.user.empresaId, targetSucursal);
   }
 

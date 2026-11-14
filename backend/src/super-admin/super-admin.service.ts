@@ -6,6 +6,7 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
 import { MetricsService } from './metrics.service';
 import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt'; // <-- NUEVO
 
 @Injectable()
 export class SuperAdminService {
@@ -59,9 +60,13 @@ export class SuperAdminService {
     });
     await this.empresaRepository.save(empresa);
 
+    // ENCRIPTAMOS LA CONTRASEÑA (Arregla el punto 2.1)
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(data.adminPassword, salt);
+
     const admin = this.usuarioRepository.create({
       email: data.adminEmail,
-      password: data.adminPassword, 
+      password: hashedPassword, 
       nombre: data.adminNombre,
       rol: 'ADMIN',
       empresaId: empresa.id

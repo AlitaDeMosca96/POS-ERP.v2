@@ -14,7 +14,6 @@ export class CajasController {
     createCajaDto.empresaId = req.user.empresaId;
     createCajaDto.usuarioId = req.user.id;
     
-    // La caja se abre en la sucursal del usuario o en la que seleccionó el admin
     const targetSucursal = req.user.sucursalId || createCajaDto.sucursalId;
     if (targetSucursal) {
       createCajaDto.sucursalId = targetSucursal;
@@ -34,7 +33,7 @@ export class CajasController {
 
   @Get()
   findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
     return this.cajasService.findAll(req.user.empresaId, targetSucursal);
   }
 

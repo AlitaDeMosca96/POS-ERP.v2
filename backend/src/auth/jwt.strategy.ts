@@ -14,11 +14,23 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    // Acá podríamos buscar el usuario en la BD para asegurarnos de que sigue activo
     const usuario = await this.usuariosService.findOne(payload.sub);
+    
     if (!usuario || !usuario.activo) {
       throw new UnauthorizedException('Token inválido o usuario inactivo');
     }
-    return { id: payload.sub, email: payload.email, rol: payload.rol, empresaId: payload.empresaId };
+
+    // Si la empresa fue suspendida, bloqueamos la petición inmediatamente (arregla el bug de las 8hs)
+    if (usuario.empresa && !usuario.empresa.activa) {
+      throw new UnauthorizedException('La cuenta de la empresa está suspendida');
+    }
+
+    return { 
+      id: payload.sub, 
+      email: payload.email, 
+      rol: payload.rol, 
+      empresaId: payload.empresaId,
+      sucursalId: payload.sucursalId // <-- AHORA SÍ DEVOLVEMOS LA SUCURSAL
+    };
   }
 }

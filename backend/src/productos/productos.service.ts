@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProductoDto } from './dto/create-producto.dto';
 import { UpdateProductoDto } from './dto/update-producto.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,7 +15,7 @@ export class ProductosService {
     private readonly recetaRepository: Repository<Receta>,
   ) {}
 
-  create(createProductoDto: CreateProductoDto) {
+  async create(createProductoDto: CreateProductoDto) {
     const producto = this.productoRepository.create({
       nombre: createProductoDto.nombre,
       precio: createProductoDto.precio,
@@ -33,7 +33,6 @@ export class ProductosService {
       relations: { empresa: true, categoria: true } 
     });
 
-    // --- CÁLCULO DE STOCK DINÁMICO ---
     for (const prod of productos) {
       const receta = await this.recetaRepository.find({
         where: { producto: { id: prod.id } },
@@ -43,32 +42,31 @@ export class ProductosService {
       if (receta.length > 0) {
         let maxPosible = Infinity;
         for (const item of receta) {
-          // Calculamos cuántos platos se pueden hacer con este insumo
           const disponible = Math.floor(item.insumo.stock / Number(item.cantidad));
-          if (disponible < maxPosible) {
-            maxPosible = disponible;
-          }
+          if (disponible < maxPosible) maxPosible = disponible;
         }
-        // El stock del producto pasa a ser el máximo posible según sus insumos
         prod.stock = maxPosible === Infinity ? 0 : maxPosible;
       }
     }
-
     return productos;
   }
 
-  async findOne(id: string) {
-    return this.productoRepository.findOne({ 
-      where: { id },
+  async findOne(id: string, empresaId: string) {
+    const producto = await this.productoRepository.findOne({ 
+      where: { id, empresaId }, // <-- VALIDACIÓN MULTI-TENANT
       relations: { empresa: true, categoria: true }
     });
+    if (!producto) throw new NotFoundException('Producto no encontrado o no pertenece a tu empresa');
+    return producto;
   }
 
-  update(id: string, updateProductoDto: UpdateProductoDto) {
+  async update(id: string, updateProductoDto: UpdateProductoDto, empresaId: string) {
+    await this.findOne(id, empresaId); // Valida que exista y sea de la empresa
     return this.productoRepository.update(id, updateProductoDto);
   }
 
-  remove(id: string) {
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.productoRepository.delete(id);
   }
 }

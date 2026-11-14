@@ -11,29 +11,27 @@ export class ProductosController {
 
   @Post()
   create(@Body() createProductoDto: CreateProductoDto, @Request() req: any) {
-    // Sobrescribimos el ID con el del Token seguro
     createProductoDto.empresaId = req.user.empresaId;
     return this.productosService.create(createProductoDto);
   }
 
   @Get()
   findAll(@Request() req: any) {
-    // Filtramos para que solo vea los productos de su empresa
     return this.productosService.findAll(req.user.empresaId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.productosService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.productosService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProductoDto: UpdateProductoDto) {
-    return this.productosService.update(id, updateProductoDto);
+  update(@Param('id') id: string, @Body() updateProductoDto: UpdateProductoDto, @Request() req: any) {
+    return this.productosService.update(id, updateProductoDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.productosService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.productosService.remove(id, req.user.empresaId);
   }
 }
