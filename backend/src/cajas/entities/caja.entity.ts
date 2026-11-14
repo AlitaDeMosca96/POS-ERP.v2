@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Usuario } from '../../usuarios/entities/usuario.entity';
+import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
 
 @Entity('cajas')
 export class Caja {
@@ -14,7 +15,7 @@ export class Caja {
   saldoFinal: number;
 
   @Column({ type: 'varchar', default: 'ABIERTA' })
-  estado: string; // ABIERTA, CERRADA
+  estado: string;
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
@@ -22,6 +23,14 @@ export class Caja {
 
   @Column('uuid')
   empresaId: string;
+
+  // RELACIÓN CON SUCURSAL
+  @ManyToOne(() => Sucursal, { nullable: true })
+  @JoinColumn({ name: 'sucursal_id' })
+  sucursal: Sucursal;
+
+  @Column('uuid', { nullable: true })
+  sucursalId: string;
 
   @ManyToOne(() => Usuario)
   @JoinColumn({ name: 'usuario_id' })

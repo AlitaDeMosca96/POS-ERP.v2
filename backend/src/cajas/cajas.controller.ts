@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, UseGuards, Request, Query } from '@nestjs/common';
 import { CajasService } from './cajas.service';
 import { CreateCajaDto } from './dto/create-caja.dto';
 import { CreateMovimientoDto } from './dto/create-movimiento.dto';
@@ -13,6 +13,12 @@ export class CajasController {
   abrir(@Body() createCajaDto: CreateCajaDto, @Request() req: any) {
     createCajaDto.empresaId = req.user.empresaId;
     createCajaDto.usuarioId = req.user.id;
+    
+    // La caja se abre en la sucursal del usuario o en la que seleccionó el admin
+    const targetSucursal = req.user.sucursalId || createCajaDto.sucursalId;
+    if (targetSucursal) {
+      createCajaDto.sucursalId = targetSucursal;
+    }
     return this.cajasService.abrir(createCajaDto);
   }
 
@@ -27,11 +33,11 @@ export class CajasController {
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.cajasService.findAll(req.user.empresaId);
+  findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
+    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    return this.cajasService.findAll(req.user.empresaId, targetSucursal);
   }
 
-  // --- NUEVAS RUTAS ---
   @Post('movimientos')
   registrarMovimiento(@Body() dto: CreateMovimientoDto) {
     return this.cajasService.registrarMovimiento(dto);

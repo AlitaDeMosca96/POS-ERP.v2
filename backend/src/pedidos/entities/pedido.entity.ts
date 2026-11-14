@@ -3,7 +3,8 @@ import { Empresa } from '../../empresas/entities/empresa.entity';
 import { PedidoDetalle } from './pedido-detalle.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
 import { Caja } from '../../cajas/entities/caja.entity';
-import { Cliente } from '../../clientes/entities/cliente.entity'; // <-- NUEVO
+import { Cliente } from '../../clientes/entities/cliente.entity';
+import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
 
 @Entity('pedidos')
 export class Pedido {
@@ -29,6 +30,14 @@ export class Pedido {
   @Column('uuid')
   empresaId: string;
 
+  // RELACIÓN CON SUCURSAL
+  @ManyToOne(() => Sucursal, { nullable: true })
+  @JoinColumn({ name: 'sucursal_id' })
+  sucursal: Sucursal;
+
+  @Column('uuid', { nullable: true })
+  sucursalId: string;
+
   @ManyToOne(() => Mesa, { nullable: true })
   @JoinColumn({ name: 'mesa_id' })
   mesa: Mesa;
@@ -43,7 +52,6 @@ export class Pedido {
   @Column('uuid', { nullable: true })
   cajaId: string;
 
-  // RELACIÓN CON CLIENTE
   @ManyToOne(() => Cliente, { nullable: true })
   @JoinColumn({ name: 'cliente_id' })
   cliente: Cliente;

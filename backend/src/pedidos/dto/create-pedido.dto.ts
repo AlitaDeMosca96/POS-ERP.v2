@@ -9,8 +9,9 @@ export class CreatePedidoDto {
   pedidoId?: string;
   total: number;
   empresaId: string;
+  sucursalId?: string; // <-- NUEVO
   mesaId?: string;
-  clienteId?: string; // <-- NUEVO
+  clienteId?: string;
   estado?: string;
   estadoCocina?: string;
   metodoPago?: string;

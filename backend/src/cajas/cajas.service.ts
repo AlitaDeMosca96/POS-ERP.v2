@@ -6,7 +6,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Caja } from './entities/caja.entity';
 import { MovimientoCaja } from './entities/movimiento-caja.entity';
-import { Pedido } from '../pedidos/entities/pedido.entity'; // <-- NUEVO
+import { Pedido } from '../pedidos/entities/pedido.entity';
 
 @Injectable()
 export class CajasService {
@@ -15,7 +15,7 @@ export class CajasService {
     private readonly cajaRepository: Repository<Caja>,
     @InjectRepository(MovimientoCaja)
     private readonly movimientoRepository: Repository<MovimientoCaja>,
-    @InjectRepository(Pedido) // <-- NUEVO
+    @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
   ) {}
 
@@ -30,6 +30,8 @@ export class CajasService {
       saldoInicial: createCajaDto.saldoInicial,
       empresaId: createCajaDto.empresaId,
       usuarioId: createCajaDto.usuarioId,
+      sucursalId: createCajaDto.sucursalId || undefined,
+      sucursal: createCajaDto.sucursalId ? { id: createCajaDto.sucursalId } : undefined,
       estado: 'ABIERTA'
     });
     return this.cajaRepository.save(caja);
@@ -52,10 +54,13 @@ export class CajasService {
     return this.cajaRepository.save(caja);
   }
 
-  findAll(empresaId: string) {
+  findAll(empresaId: string, sucursalId: string | null) {
+    // Si el usuario tiene sucursal, solo ve sus cajas. El admin ve todas.
+    const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
+    
     return this.cajaRepository.find({ 
-      where: { empresaId },
-      relations: { usuario: true },
+      where: query,
+      relations: { usuario: true, sucursal: true },
       order: { fechaApertura: 'DESC' }
     });
   }
@@ -72,7 +77,6 @@ export class CajasService {
     const caja = await this.cajaRepository.findOneBy({ id: cajaId });
     if (!caja) throw new BadRequestException('Caja no encontrada');
 
-    // 1. Buscamos los movimientos manuales (sangrías/ingresos)
     const movimientos = await this.movimientoRepository.find({ 
       where: { cajaId },
       order: { fecha: 'DESC' }
@@ -86,14 +90,11 @@ export class CajasService {
       if (mov.tipo === 'SANGRIA') sangrias += Number(mov.monto);
     });
 
-    // 2. Buscamos las ventas cobradas en EFECTIVO en este turno
     const ventasEfectivo = await this.pedidoRepository.find({
       where: { cajaId, metodoPago: 'EFECTIVO', estado: 'PAGADO' }
     });
     
     const totalVentasEfectivo = ventasEfectivo.reduce((acc, pedido) => acc + Number(pedido.total), 0);
-
-    // 3. Calculamos el saldo esperado real
     const saldoEsperado = Number(caja.saldoInicial) + ingresos - sangrias + totalVentasEfectivo;
 
     return {
@@ -101,7 +102,7 @@ export class CajasService {
       movimientos,
       ingresos,
       sangrias,
-      totalVentasEfectivo, // <-- Lo mandamos al frontend
+      totalVentasEfectivo,
       saldoEsperado
     };
   }

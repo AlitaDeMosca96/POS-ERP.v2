@@ -23,6 +23,7 @@ export default function CocinaPage() {
   const [loading, setLoading] = useState(true);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 
   useEffect(() => {
     if (!token) {
@@ -32,7 +33,12 @@ export default function CocinaPage() {
 
     const cargarPedidos = async () => {
       try {
-        const res = await fetch('http://localhost:3000/pedidos/cocina', {
+        // Agregamos el filtro de sucursal
+        const url = sucursalActiva 
+          ? `http://localhost:3000/pedidos/cocina?sucursalId=${sucursalActiva}` 
+          : 'http://localhost:3000/pedidos/cocina';
+
+        const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -48,7 +54,7 @@ export default function CocinaPage() {
     cargarPedidos();
     const interval = setInterval(cargarPedidos, 5000);
     return () => clearInterval(interval);
-  }, [router, token]);
+  }, [router, token, sucursalActiva]);
 
   const handleMarcarListo = async (id: string) => {
     try {
@@ -96,7 +102,6 @@ export default function CocinaPage() {
                         <span className="font-bold text-green-400">{det.cantidad}x</span>
                         <span>{det.producto.nombre}</span>
                       </div>
-                      {/* MOSTRAMOS LAS NOTAS DE LOS MODIFICADORES */}
                       {det.notas && (
                         <div className="text-sm font-bold text-yellow-400 bg-yellow-400/10 px-2 py-1 rounded inline-block w-fit">
                           ⚠ {det.notas}

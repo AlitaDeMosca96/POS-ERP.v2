@@ -13,12 +13,27 @@ export class MesasService {
   ) {}
 
   create(createMesaDto: CreateMesaDto) {
-    const mesa = this.mesaRepository.create(createMesaDto);
+    const mesa = this.mesaRepository.create({
+      nombre: createMesaDto.nombre,
+      capacidad: createMesaDto.capacidad,
+      empresaId: createMesaDto.empresaId,
+      sucursalId: createMesaDto.sucursalId || undefined,
+      sucursal: createMesaDto.sucursalId ? { id: createMesaDto.sucursalId } : undefined
+    });
     return this.mesaRepository.save(mesa);
   }
 
-  findAll(empresaId: string) {
-    return this.mesaRepository.find({ where: { empresaId } });
+  findAll(empresaId: string, sucursalId: string | null) {
+    // Si el usuario tiene sucursalId (es cajero/mozo), filtramos solo su local.
+    // Si es null (es admin), le mostramos todas las mesas de la empresa.
+    const query = sucursalId 
+      ? { empresaId, sucursalId } 
+      : { empresaId };
+
+    return this.mesaRepository.find({ 
+      where: query,
+      relations: { sucursal: true }
+    });
   }
 
   findOne(id: string) {

@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { PedidosService } from './pedidos.service';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
@@ -12,17 +12,26 @@ export class PedidosController {
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Request() req: any) {
     createPedidoDto.empresaId = req.user.empresaId; 
+    
+    // El pedido se guarda en la sucursal del cajero, o en la que seleccionó el admin
+    const targetSucursal = req.user.sucursalId || createPedidoDto.sucursalId;
+    if (targetSucursal) {
+      createPedidoDto.sucursalId = targetSucursal;
+    }
+    
     return this.pedidosService.create(createPedidoDto, req.user.id); 
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.pedidosService.findAll(req.user.empresaId);
+  findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
+    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    return this.pedidosService.findAll(req.user.empresaId, targetSucursal);
   }
 
   @Get('cocina')
-  findPendientesCocina(@Request() req: any) {
-    return this.pedidosService.findPendientesCocina(req.user.empresaId);
+  findPendientesCocina(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
+    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    return this.pedidosService.findPendientesCocina(req.user.empresaId, targetSucursal);
   }
 
   @Patch(':id/cocina')

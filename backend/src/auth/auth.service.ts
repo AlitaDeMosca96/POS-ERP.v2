@@ -18,7 +18,13 @@ export class AuthService {
     const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
     if (!isPasswordValid) throw new UnauthorizedException('Credenciales incorrectas');
 
-    const payload = { sub: usuario.id, email: usuario.email, rol: usuario.rol, empresaId: usuario.empresaId };
+    const payload = { 
+      sub: usuario.id, 
+      email: usuario.email, 
+      rol: usuario.rol, 
+      empresaId: usuario.empresaId,
+      sucursalId: usuario.sucursalId // <-- AGREGAMOS LA SUCURSAL AL TOKEN
+    };
     
     return {
       access_token: this.jwtService.sign(payload),
@@ -27,7 +33,8 @@ export class AuthService {
         nombre: usuario.nombre,
         email: usuario.email,
         rol: usuario.rol,
-        empresaId: usuario.empresaId // <-- AGREGAMOS ESTO
+        empresaId: usuario.empresaId,
+        sucursalId: usuario.sucursalId // <-- Y AL PERFIL DEL USUARIO
       }
     };
   }

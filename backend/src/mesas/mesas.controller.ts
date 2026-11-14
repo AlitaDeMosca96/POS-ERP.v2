@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
 import { MesasService } from './mesas.service';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
@@ -12,12 +12,17 @@ export class MesasController {
   @Post()
   create(@Body() createMesaDto: CreateMesaDto, @Request() req: any) {
     createMesaDto.empresaId = req.user.empresaId;
+    if (req.user.sucursalId) {
+      createMesaDto.sucursalId = req.user.sucursalId;
+    }
     return this.mesasService.create(createMesaDto);
   }
 
   @Get()
-  findAll(@Request() req: any) {
-    return this.mesasService.findAll(req.user.empresaId);
+  findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
+    // Si es cajero, manda su sucursal. Si es admin, usa la que seleccionó (o null para ver todo)
+    const targetSucursal = req.user.sucursalId || querySucursalId || null;
+    return this.mesasService.findAll(req.user.empresaId, targetSucursal);
   }
 
   @Get(':id')

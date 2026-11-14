@@ -98,6 +98,8 @@ export class PedidosService {
     const pedido = this.pedidoRepository.create({
       total: createPedidoDto.total,
       empresaId: createPedidoDto.empresaId,
+      sucursalId: createPedidoDto.sucursalId || undefined, // <-- SUCURSAL
+      sucursal: createPedidoDto.sucursalId ? { id: createPedidoDto.sucursalId } : undefined,
       estado: createPedidoDto.estado || 'PAGADO',
       estadoCocina: 'PENDIENTE',
       metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
@@ -116,20 +118,25 @@ export class PedidosService {
     return this.pedidoRepository.save(pedido);
   }
 
-  findAll(empresaId: string) {
+  findAll(empresaId: string, sucursalId: string | null) {
+    // Filtramos por sucursal si el usuario pertenece a una
+    const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
+
     return this.pedidoRepository.find({ 
-      where: { empresaId },
+      where: query,
       relations: { empresa: true, mesa: true, cliente: true, detalles: { producto: true } },
       order: { createdAt: 'DESC' }
     });
   }
 
-  findPendientesCocina(empresaId: string) {
+  findPendientesCocina(empresaId: string, sucursalId: string | null) {
+    // El cocinero solo ve las comandas de SU sucursal
+    const query = sucursalId 
+      ? { empresaId, sucursalId, estadoCocina: 'PENDIENTE' } 
+      : { empresaId, estadoCocina: 'PENDIENTE' };
+
     return this.pedidoRepository.find({
-      where: { 
-        empresaId, 
-        estadoCocina: 'PENDIENTE' // <-- Quitamos el filtro de estado ABIERTO
-      },
+      where: query,
       relations: { mesa: true, detalles: { producto: true } },
       order: { createdAt: 'ASC' }
     });

@@ -40,6 +40,7 @@ export default function CajaPage() {
   const [movMotivo, setMovMotivo] = useState('');
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 
   useEffect(() => {
     if (!token) {
@@ -94,7 +95,10 @@ export default function CajaPage() {
       const res = await fetch('http://localhost:3000/cajas/apertura', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ saldoInicial: Number(montoApertura) })
+        body: JSON.stringify({ 
+          saldoInicial: Number(montoApertura),
+          sucursalId: sucursalActiva || null // <-- Le pasamos la sucursal activa
+        })
       });
 
       if (res.ok) {

@@ -13,10 +13,14 @@ export class ReportesService {
     private readonly detalleRepository: Repository<PedidoDetalle>,
   ) {}
 
-  async getResumen(empresaId: string) {
-    // 1. Buscamos todos los pedidos pagados de la empresa
+  async getResumen(empresaId: string, sucursalId: string | null) {
+    // Si hay sucursalId, filtramos solo esa sucursal. Si no, traemos todo de la empresa.
+    const query = sucursalId 
+      ? { empresaId, estado: 'PAGADO', sucursalId } 
+      : { empresaId, estado: 'PAGADO' };
+
     const pedidos = await this.pedidoRepository.find({
-      where: { empresaId, estado: 'PAGADO' },
+      where: query,
       relations: { detalles: { producto: true } }
     });
 
@@ -26,7 +30,6 @@ export class ReportesService {
     let ventasTransferencia = 0;
     const productosCount: Record<string, { nombre: string, cantidad: number, total: number }> = {};
 
-    // 2. Procesamos los datos
     pedidos.forEach(pedido => {
       const monto = Number(pedido.total);
       totalVentas += monto;
@@ -35,7 +38,6 @@ export class ReportesService {
       else if (pedido.metodoPago === 'TARJETA') ventasTarjeta += monto;
       else ventasTransferencia += monto;
 
-      // Contamos los productos vendidos
       pedido.detalles.forEach(det => {
         const prodNombre = det.producto?.nombre || 'Producto Eliminado';
         if (!productosCount[prodNombre]) {
@@ -46,7 +48,6 @@ export class ReportesService {
       });
     });
 
-    // 3. Armamos el Top 5 de productos más vendidos
     const topProductos = Object.values(productosCount)
       .sort((a, b) => b.cantidad - a.cantidad)
       .slice(0, 5);

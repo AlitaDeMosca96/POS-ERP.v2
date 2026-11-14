@@ -15,16 +15,24 @@ interface Resumen {
   topProductos: { nombre: string; cantidad: number; total: number }[];
 }
 
+interface Sucursal {
+  id: string;
+  nombre: string;
+}
+
 const COLORS = ['#10B981', '#3B82F6', '#8B5CF6'];
 
 export default function DashboardPage() {
   const router = useRouter();
   const [usuario, setUsuario] = useState<any>(null);
   const [resumen, setResumen] = useState<Resumen | null>(null);
+  const [sucursales, setSucursales] = useState<Sucursal[]>([]);
+  const [sucursalActiva, setSucursalActiva] = useState<string>('');
   const [loading, setLoading] = useState(true);
 
+  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+
   useEffect(() => {
-    const token = localStorage.getItem('token');
     const userStr = localStorage.getItem('usuario');
 
     if (!token || !userStr) {
@@ -32,15 +40,36 @@ export default function DashboardPage() {
       return;
     }
 
-    setUsuario(JSON.parse(userStr));
+    const user = JSON.parse(userStr);
+    setUsuario(user);
 
-    fetch('http://localhost:3000/reportes/resumen', {
+    // Cargamos las sucursales para el selector (solo si es ADMIN)
+    if (user.rol === 'ADMIN') {
+      fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } })
+        .then(res => res.json())
+        .then(data => setSucursales(data));
+    }
+
+    // Tomamos la sucursal guardada en el navegador (si existe)
+    const sucursalGuardada = localStorage.getItem('sucursalActiva') || '';
+    setSucursalActiva(sucursalGuardada);
+
+    cargarReportes(sucursalGuardada);
+  }, [router, token]);
+
+  const cargarReportes = (sucursalId: string) => {
+    setLoading(true);
+    // Si hay sucursal, la mandamos por query param. Si está vacío, el backend trae todo.
+    const url = sucursalId 
+      ? `http://localhost:3000/reportes/resumen?sucursalId=${sucursalId}` 
+      : 'http://localhost:3000/reportes/resumen';
+
+    fetch(url, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => {
         if (res.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('usuario');
+          localStorage.clear();
           router.push('/');
           return null; 
         }
@@ -54,15 +83,21 @@ export default function DashboardPage() {
         console.error(err);
         setLoading(false);
       });
-  }, [router]);
+  };
+
+  const handleSucursalChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const nuevaSucursal = e.target.value;
+    setSucursalActiva(nuevaSucursal);
+    localStorage.setItem('sucursalActiva', nuevaSucursal); // Guardamos la elección
+    cargarReportes(nuevaSucursal); // Recargamos los gráficos
+  };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
+    localStorage.clear();
     router.push('/');
   };
 
-  if (loading || !usuario) return <div className="p-10 text-center text-xl font-bold">Cargando datos del negocio...</div>;
+  if (!usuario) return <div className="p-10 text-center text-xl font-bold">Cargando datos del negocio...</div>;
 
   const metodosPagoData = resumen?.metodosPago.filter(m => m.value > 0) || [];
 
@@ -70,7 +105,25 @@ export default function DashboardPage() {
     <div className="min-h-screen bg-gray-100">
       <nav className="bg-blue-600 p-4 text-white flex justify-between items-center shadow-md">
         <h1 className="text-xl font-bold">Mi ERP Gastronómico</h1>
+        
         <div className="flex items-center gap-4">
+          {/* SELECTOR DE SUCURSAL (Solo para ADMIN) */}
+          {usuario.rol === 'ADMIN' && (
+            <div className="flex items-center gap-2 bg-blue-700 px-3 py-1 rounded">
+              <span className="text-sm font-medium">Sucursal:</span>
+              <select 
+                value={sucursalActiva} 
+                onChange={handleSucursalChange}
+                className="bg-white text-gray-800 font-bold text-sm rounded px-2 py-1 focus:outline-none"
+              >
+                <option value="">Todas las sucursales</option>
+                {sucursales.map(suc => (
+                  <option key={suc.id} value={suc.id}>{suc.nombre}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           <span className="text-sm font-medium">Hola, {usuario.nombre} ({usuario.rol})</span>
           <button onClick={handleLogout} className="bg-red-500 hover:bg-red-600 px-3 py-1 rounded text-sm transition">
             Cerrar Sesión
@@ -82,7 +135,9 @@ export default function DashboardPage() {
         <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
           
           <div className="flex justify-between items-center mb-8 flex-wrap gap-4">
-            <h2 className="text-3xl font-bold text-gray-800">Tablero de Control</h2>
+            <h2 className="text-3xl font-bold text-gray-800">
+              Tablero de Control {sucursalActiva ? `- ${sucursales.find(s => s.id === sucursalActiva)?.nombre}` : ''}
+            </h2>
             
             <div className="flex gap-2 flex-wrap justify-end">
               <button onClick={() => router.push('/reservas')} className="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-3 rounded-lg shadow transition text-sm">Reservas</button>
@@ -105,72 +160,75 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
             <div className="bg-green-50 p-6 rounded-xl border border-green-200 shadow-sm">
               <h3 className="font-bold text-green-800 text-lg">Ingresos Totales</h3>
-              <p className="text-4xl font-light text-green-600 mt-2">${resumen?.totalVentas.toFixed(2)}</p>
+              <p className="text-4xl font-light text-green-600 mt-2">${resumen?.totalVentas.toFixed(2) || '0.00'}</p>
             </div>
             <div className="bg-blue-50 p-6 rounded-xl border border-blue-200 shadow-sm">
               <h3 className="font-bold text-blue-800 text-lg">Tickets Emitidos</h3>
-              <p className="text-4xl font-light text-blue-600 mt-2">{resumen?.cantidadPedidos}</p>
+              <p className="text-4xl font-light text-blue-600 mt-2">{resumen?.cantidadPedidos || 0}</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Ventas por Medio de Pago</h3>
-              {metodosPagoData.length === 0 ? (
-                <p className="text-center text-gray-500 mt-10">No hay ventas registradas aún.</p>
-              ) : (
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={metodosPagoData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        fill="#8884d8"
-                        paddingAngle={5}
-                        dataKey="value"
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+          {loading ? (
+             <div className="text-center p-10 text-gray-500">Actualizando gráficos...</div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Ventas por Medio de Pago</h3>
+                {metodosPagoData.length === 0 ? (
+                  <p className="text-center text-gray-500 mt-10">No hay ventas registradas.</p>
+                ) : (
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={metodosPagoData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={100}
+                          fill="#8884d8"
+                          paddingAngle={5}
+                          dataKey="value"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        >
+                          {metodosPagoData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip formatter={(value) => `$${value}`} />
+                        <Legend verticalAlign="bottom" height={36}/>
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Top 5 Productos Más Vendidos</h3>
+                {(!resumen?.topProductos || resumen.topProductos.length === 0) ? (
+                  <p className="text-center text-gray-500 mt-10">No hay ventas registradas.</p>
+                ) : (
+                  <div className="h-72 w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={resumen.topProductos}
+                        margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
                       >
-                        {metodosPagoData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value) => `$${value}`} />
-                      <Legend verticalAlign="bottom" height={36}/>
-                    </PieChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+                        <XAxis dataKey="nombre" tick={{fontSize: 12}} />
+                        <YAxis />
+                        <Tooltip formatter={(value) => `${value} unidades`} />
+                        <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]}>
+                          {resumen.topProductos.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
             </div>
-
-            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-              <h3 className="font-bold text-gray-800 text-xl mb-6 text-center">Top 5 Productos Más Vendidos</h3>
-              {(!resumen?.topProductos || resumen.topProductos.length === 0) ? (
-                <p className="text-center text-gray-500 mt-10">No hay ventas registradas aún.</p>
-              ) : (
-                <div className="h-72 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart
-                      data={resumen.topProductos}
-                      margin={{ top: 20, right: 30, left: 0, bottom: 5 }}
-                    >
-                      <XAxis dataKey="nombre" tick={{fontSize: 12}} />
-                      <YAxis />
-                      <Tooltip formatter={(value) => `${value} unidades`} />
-                      <Bar dataKey="cantidad" fill="#3B82F6" radius={[4, 4, 0, 0]}>
-                        {resumen.topProductos.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
-            </div>
-          </div>
-
+          )}
         </div>
       </main>
     </div>
