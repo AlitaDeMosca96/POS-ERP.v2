@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import toast from 'react-hot-toast';
+import { fetcher } from '../../../lib/api';
 
 interface ModalCrearClienteProps {
   isOpen: boolean;
@@ -22,26 +23,19 @@ export default function ModalCrearCliente({ isOpen, onClose, onSuccess, planes }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-    const token = localStorage.getItem('token');
 
     try {
-      const res = await fetch(`${apiUrl}/super-admin/empresas`, {
+      await fetcher('/super-admin/empresas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, cuit, adminNombre, adminEmail, adminPassword, planId })
       });
       
-      if (res.ok) {
-        toast.success('¡Empresa creada con éxito!');
-        setNombre(''); setCuit(''); setAdminNombre(''); setAdminEmail(''); setAdminPassword('');
-        onSuccess();
-        onClose();
-      } else {
-        toast.error('Error al crear empresa');
-      }
-    } catch (error) {
-      toast.error('Error de conexión');
+      toast.success('¡Empresa creada con éxito!');
+      setNombre(''); setCuit(''); setAdminNombre(''); setAdminEmail(''); setAdminPassword('');
+      onSuccess();
+      onClose();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al crear empresa');
     }
   };
 

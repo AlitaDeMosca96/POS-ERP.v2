@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetcher } from '../../lib/api';
 
 interface Categoria { id: string; nombre: string; }
 interface Producto { id: string; nombre: string; precio: number; categoriaId?: string; }
@@ -16,39 +17,25 @@ export default function KioscoPage() {
   const [loading, setLoading] = useState(true);
   const [pedidoExitoso, setPedidoExitoso] = useState<string | null>(null);
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-
   useEffect(() => {
-    if (!token) {
-      router.push('/');
-      return;
-    }
-
     const cargarDatos = async () => {
       try {
-        const [resProd, resCat] = await Promise.all([
-          fetch(`${apiUrl}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${apiUrl}/categorias`, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setProductos(await resProd.json());
-        setCategorias(await resCat.json());
-        setLoading(false);
+        const [prods, cats] = await Promise.all([fetcher('/productos'), fetcher('/categorias')]);
+        setProductos(prods || []);
+        setCategorias(cats || []);
       } catch (error) {
         console.error(error);
+      } finally {
         setLoading(false);
       }
     };
-    
     cargarDatos();
-  }, [router, token, apiUrl]);
+  }, []);
 
   const agregarAlCarrito = (producto: Producto) => {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === producto.id);
-      if (existe) {
-        return prev.map(item => item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item);
-      }
+      if (existe) return prev.map(item => item.id === producto.id ? { ...item, cantidad: item.cantidad + 1 } : item);
       return [...prev, { ...producto, cantidad: 1 }];
     });
   };
@@ -56,48 +43,31 @@ export default function KioscoPage() {
   const quitarDelCarrito = (productoId: string) => {
     setCarrito(prev => {
       const existe = prev.find(item => item.id === productoId);
-      if (existe && existe.cantidad > 1) {
-        return prev.map(item => item.id === productoId ? { ...item, cantidad: item.cantidad - 1 } : item);
-      }
+      if (existe && existe.cantidad > 1) return prev.map(item => item.id === productoId ? { ...item, cantidad: item.cantidad - 1 } : item);
       return prev.filter(item => item.id !== productoId);
     });
   };
 
-  const calcularTotal = () => {
-    return carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
-  };
+  const calcularTotal = () => carrito.reduce((total, item) => total + (item.precio * item.cantidad), 0);
 
   const confirmarPedido = async () => {
     if (carrito.length === 0) return;
-
-    const pedidoData = {
-      estado: 'ABIERTO', // <-- PENDIENTE DE PAGO
-      metodoPago: 'PENDIENTE', // <-- NO ASUME TARJETA
-      mesaId: null,
-      detalles: carrito.map(item => ({
-        productoId: item.id,
-        cantidad: item.cantidad
-      }))
-    };
-
     try {
-      const res = await fetch(`${apiUrl}/pedidos`, {
+      const ventaData = await fetcher('/pedidos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(pedidoData)
+        body: JSON.stringify({
+          estado: 'ABIERTO',
+          metodoPago: 'PENDIENTE',
+          mesaId: null,
+          detalles: carrito.map(item => ({ productoId: item.id, cantidad: item.cantidad }))
+        })
       });
-
-      if (res.ok) {
-        const ventaData = await res.json();
+      if (ventaData) {
         setPedidoExitoso(ventaData.id.slice(0, 4).toUpperCase());
         setCarrito([]);
         setTimeout(() => setPedidoExitoso(null), 8000);
-      } else {
-        alert('Error al procesar el pedido');
       }
-    } catch (error) {
-      console.error(error);
-    }
+    } catch (error) { alert('Error al procesar el pedido'); }
   };
 
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center text-3xl font-bold">Cargando menú...</div>;
@@ -125,14 +95,12 @@ export default function KioscoPage() {
           <h1 className="text-3xl font-black text-gray-800 tracking-tight">Bienvenido</h1>
           <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-400 hover:text-gray-700">Salir</button>
         </div>
-
         <div className="p-6 pb-2 flex gap-3 overflow-x-auto bg-gray-50">
           <button onClick={() => setCategoriaActiva('ALL')} className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === 'ALL' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}>Ver Todo</button>
           {categorias.map(cat => (
             <button key={cat.id} onClick={() => setCategoriaActiva(cat.id)} className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === cat.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}>{cat.nombre}</button>
           ))}
         </div>
-
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
             {productosFiltrados.map(prod => (
@@ -144,12 +112,8 @@ export default function KioscoPage() {
           </div>
         </div>
       </div>
-
       <div className="w-1/3 bg-white shadow-2xl flex flex-col z-20 border-l border-gray-200">
-        <div className="p-6 bg-gray-800 text-white">
-          <h2 className="text-2xl font-bold">Tu Pedido</h2>
-        </div>
-
+        <div className="p-6 bg-gray-800 text-white"><h2 className="text-2xl font-bold">Tu Pedido</h2></div>
         <div className="flex-1 p-6 overflow-y-auto space-y-4">
           {carrito.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-gray-300">
@@ -159,10 +123,7 @@ export default function KioscoPage() {
           ) : (
             carrito.map((item, index) => (
               <div key={index} className="flex justify-between items-center bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <div className="flex-1">
-                  <p className="font-bold text-gray-800 text-lg">{item.nombre}</p>
-                  <p className="text-gray-500 font-medium">${item.precio} c/u</p>
-                </div>
+                <div className="flex-1"><p className="font-bold text-gray-800 text-lg">{item.nombre}</p><p className="text-gray-500 font-medium">${item.precio} c/u</p></div>
                 <div className="flex items-center gap-4">
                   <button onClick={() => quitarDelCarrito(item.id)} className="w-10 h-10 rounded-full bg-red-100 text-red-600 font-bold text-xl flex items-center justify-center hover:bg-red-200 transition">-</button>
                   <span className="font-bold text-xl w-6 text-center">{item.cantidad}</span>
@@ -172,15 +133,9 @@ export default function KioscoPage() {
             ))
           )}
         </div>
-
         <div className="p-6 bg-gray-50 border-t border-gray-200">
-          <div className="flex justify-between text-3xl font-black mb-6 text-gray-800">
-            <span>Total:</span>
-            <span>${calcularTotal()}</span>
-          </div>
-          <button onClick={confirmarPedido} disabled={carrito.length === 0} className="w-full bg-green-600 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-green-500 disabled:bg-gray-300 shadow-lg transition transform hover:scale-[1.02]">
-            Confirmar Pedido
-          </button>
+          <div className="flex justify-between text-3xl font-black mb-6 text-gray-800"><span>Total:</span><span>${calcularTotal()}</span></div>
+          <button onClick={confirmarPedido} disabled={carrito.length === 0} className="w-full bg-green-600 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-green-500 disabled:bg-gray-300 shadow-lg transition transform hover:scale-[1.02]">Confirmar Pedido</button>
         </div>
       </div>
     </div>

@@ -2,17 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { fetcher } from '../../lib/api';
 
 interface Cliente { id: string; nombre: string; }
 interface Mesa { id: string; nombre: string; capacidad: number; }
-interface Reserva {
-  id: string;
-  fechaHora: string;
-  cantidadPersonas: number;
-  estado: string;
-  mesa: Mesa;
-  cliente: Cliente;
-}
+interface Reserva { id: string; fechaHora: string; cantidadPersonas: number; estado: string; mesa: Mesa; cliente: Cliente; }
 
 export default function ReservasPage() {
   const router = useRouter();
@@ -20,90 +15,48 @@ export default function ReservasPage() {
   const [clientes, setClientes] = useState<Cliente[]>([]);
   const [mesas, setMesas] = useState<Mesa[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estados del formulario
   const [fechaHora, setFechaHora] = useState('');
   const [cantidadPersonas, setCantidadPersonas] = useState('2');
   const [mesaId, setMesaId] = useState('');
   const [clienteId, setClienteId] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
-  useEffect(() => {
-    if (!token) {
-      router.push('/');
-      return;
-    }
-    cargarDatos();
-  }, [router, token]);
+  useEffect(() => { cargarDatos(); }, []);
 
   const cargarDatos = async () => {
     try {
-      const [resRes, resCli, resMes] = await Promise.all([
-        fetch('/api/reservas', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/clientes', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/mesas', { headers: { Authorization: `Bearer ${token}` } })
-      ]);
-      setReservas(await resRes.json());
-      const clis = await resCli.json();
-      const mess = await resMes.json();
-      setClientes(clis);
-      setMesas(mess);
-      
-      if (clis.length > 0) setClienteId(clis[0].id);
-      if (mess.length > 0) setMesaId(mess[0].id);
-      
-      setLoading(false);
+      const [resRes, resCli, resMes] = await Promise.all([fetcher('/reservas'), fetcher('/clientes'), fetcher('/mesas')]);
+      setReservas(resRes || []);
+      setClientes(resCli || []);
+      setMesas(resMes || []);
+      if (resCli && resCli.length > 0) setClienteId(resCli[0].id);
+      if (resMes && resMes.length > 0) setMesaId(resMes[0].id);
     } catch (error) {
       console.error(error);
+    } finally {
       setLoading(false);
     }
   };
 
   const handleCrearReserva = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fechaHora || !mesaId || !clienteId) {
-      alert('Por favor, completá todos los campos.');
-      return;
-    }
-
+    if (!fechaHora || !mesaId || !clienteId) return toast.error('Completá todos los campos');
     try {
-      const res = await fetch('/api/reservas', {
+      await fetcher('/reservas', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          fechaHora: new Date(fechaHora).toISOString(),
-          cantidadPersonas: Number(cantidadPersonas),
-          mesaId: mesaId,
-          clienteId: clienteId
-        })
+        body: JSON.stringify({ fechaHora: new Date(fechaHora).toISOString(), cantidadPersonas: Number(cantidadPersonas), mesaId, clienteId })
       });
-
-      if (res.ok) {
-        alert('Reserva creada con éxito');
-        setFechaHora('');
-        setCantidadPersonas('2');
-        cargarDatos(); // Recargamos la tabla
-      } else {
-        alert('Error al crear la reserva');
-      }
-    } catch (error) {
-      console.error(error);
-    }
+      toast.success('Reserva creada con éxito');
+      setFechaHora(''); setCantidadPersonas('2');
+      cargarDatos();
+    } catch (error: any) { toast.error(error.message || 'Error al crear la reserva'); }
   };
 
   const handleCancelarReserva = async (id: string) => {
     if (!confirm('¿Estás seguro de cancelar esta reserva?')) return;
     try {
-      const res = await fetch(`/api/reservas/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ estado: 'CANCELADA' })
-      });
-      if (res.ok) cargarDatos();
-    } catch (error) {
-      console.error(error);
-    }
+      await fetcher(`/reservas/${id}`, { method: 'PATCH', body: JSON.stringify({ estado: 'CANCELADA' }) });
+      cargarDatos();
+    } catch (error) { console.error(error); }
   };
 
   if (loading) return <div className="p-10 text-center">Cargando reservas...</div>;
@@ -111,12 +64,9 @@ export default function ReservasPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-        
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Libro de Reservas</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">
-            Volver al Dashboard
-          </button>
+          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">Volver al Dashboard</button>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
@@ -124,10 +74,7 @@ export default function ReservasPage() {
           <form onSubmit={handleCrearReserva} className="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
               <label className="block text-xs text-gray-500 mb-1">Fecha y Hora</label>
-              <input
-                type="datetime-local" required value={fechaHora} onChange={e => setFechaHora(e.target.value)}
-                className="w-full border p-2 rounded text-gray-800"
-              />
+              <input type="datetime-local" required value={fechaHora} onChange={e => setFechaHora(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Cliente</label>
@@ -143,15 +90,10 @@ export default function ReservasPage() {
             </div>
             <div>
               <label className="block text-xs text-gray-500 mb-1">Personas</label>
-              <input
-                type="number" required value={cantidadPersonas} onChange={e => setCantidadPersonas(e.target.value)}
-                className="w-full border p-2 rounded text-gray-800"
-              />
+              <input type="number" required value={cantidadPersonas} onChange={e => setCantidadPersonas(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
             </div>
             <div className="flex items-end">
-              <button type="submit" className="w-full bg-blue-600 text-white font-bold p-2 rounded hover:bg-blue-700 h-[42px]">
-                Reservar
-              </button>
+              <button type="submit" className="w-full bg-blue-600 text-white font-bold p-2 rounded hover:bg-blue-700 h-[42px]">Reservar</button>
             </div>
           </form>
         </div>
@@ -171,37 +113,19 @@ export default function ReservasPage() {
             <tbody>
               {reservas.map(res => (
                 <tr key={res.id} className="border-b hover:bg-gray-50 text-gray-800">
-                  <td className="p-4 font-medium">
-                    {new Date(res.fechaHora).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
-                  </td>
+                  <td className="p-4 font-medium">{new Date(res.fechaHora).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}</td>
                   <td className="p-4">{res.cliente?.nombre}</td>
-                  <td className="p-4">
-                    <span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">{res.mesa?.nombre}</span>
-                  </td>
+                  <td className="p-4"><span className="bg-gray-100 text-gray-700 px-2 py-1 rounded text-xs font-bold">{res.mesa?.nombre}</span></td>
                   <td className="p-4 text-center">{res.cantidadPersonas}</td>
                   <td className="p-4">
-                    <span className={`px-2 py-1 rounded text-xs font-bold ${
-                      res.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-700' : 
-                      res.estado === 'CUMPLIDA' ? 'bg-green-100 text-green-700' : 
-                      'bg-red-100 text-red-700'
-                    }`}>
-                      {res.estado}
-                    </span>
+                    <span className={`px-2 py-1 rounded text-xs font-bold ${res.estado === 'PENDIENTE' ? 'bg-yellow-100 text-yellow-700' : res.estado === 'CUMPLIDA' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>{res.estado}</span>
                   </td>
                   <td className="p-4 text-center">
-                    {res.estado === 'PENDIENTE' && (
-                      <button onClick={() => handleCancelarReserva(res.id)} className="text-red-500 hover:underline text-sm font-bold">
-                        Cancelar
-                      </button>
-                    )}
+                    {res.estado === 'PENDIENTE' && <button onClick={() => handleCancelarReserva(res.id)} className="text-red-500 hover:underline text-sm font-bold">Cancelar</button>}
                   </td>
                 </tr>
               ))}
-              {reservas.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="p-8 text-center text-gray-500">No hay reservas registradas.</td>
-                </tr>
-              )}
+              {reservas.length === 0 && <tr><td colSpan={6} className="p-8 text-center text-gray-500">No hay reservas registradas.</td></tr>}
             </tbody>
           </table>
         </div>

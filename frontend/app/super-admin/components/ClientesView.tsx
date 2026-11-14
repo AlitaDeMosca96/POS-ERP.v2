@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
+import { fetcher } from '../../../lib/api';
 import ModalCrearCliente from './ModalCrearCliente';
 
 interface Empresa { id: string; nombre: string; cuit: string; activa: boolean; usuarios: number; totalVentas: number; fechaAlta: string; plan?: string; }
@@ -16,45 +17,44 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
   const [modalAbierto, setModalAbierto] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
   useEffect(() => { cargarDatos(); }, []);
 
   const cargarDatos = async () => {
     try {
       const [resEmp, resPlanes] = await Promise.all([
-        fetch(`${apiUrl}/super-admin/empresas`, { headers: { Authorization: `Bearer ${token}` } }),
-        fetch(`${apiUrl}/planes`, { headers: { Authorization: `Bearer ${token}` } })
+        fetcher('/super-admin/empresas'),
+        fetcher('/planes')
       ]);
-      if (resEmp.ok) setEmpresas(await resEmp.json());
-      if (resPlanes.ok) setPlanes(await resPlanes.json());
+      if (resEmp) setEmpresas(resEmp);
+      if (resPlanes) setPlanes(resPlanes);
+    } catch (error) {
+      console.error(error);
+    } finally {
       setLoading(false);
-    } catch (error) { console.error(error); setLoading(false); }
+    }
   };
 
   const handleToggleEstado = async (id: string, estadoActual: boolean) => {
     const accion = estadoActual ? 'SUSPENDER' : 'ACTIVAR';
     if (!confirm(`¿Estás seguro de ${accion} esta empresa?`)) return;
     try {
-      await fetch(`${apiUrl}/super-admin/empresas/${id}/toggle`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+      await fetcher(`/super-admin/empresas/${id}/toggle`, { method: 'PATCH' });
       toast.success(`Empresa ${estadoActual ? 'suspendida' : 'activada'}`);
       cargarDatos();
-    } catch (error) { toast.error('Error al cambiar estado'); }
+    } catch (error: any) { toast.error(error.message || 'Error al cambiar estado'); }
   };
 
   const handleImpersonar = async (id: string) => {
     if (!confirm('¿Entrar como soporte a esta empresa?')) return;
     try {
-      const res = await fetch(`${apiUrl}/super-admin/empresas/${id}/impersonar`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const data = await res.json();
+      const data = await fetcher(`/super-admin/empresas/${id}/impersonar`, { method: 'POST' });
+      if (data) {
         localStorage.setItem('token', data.access_token);
         localStorage.setItem('usuario', JSON.stringify(data.usuario));
         localStorage.removeItem('sucursalActiva');
         router.push('/dashboard');
       }
-    } catch (error) { toast.error('Error al impersonar'); }
+    } catch (error: any) { toast.error(error.message || 'Error al impersonar'); }
   };
 
   if (loading) return <div className="text-[#D4AF37] animate-pulse">Cargando clientes...</div>;
@@ -121,12 +121,7 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
         </tbody>
       </table>
 
-      <ModalCrearCliente 
-        isOpen={modalAbierto} 
-        onClose={() => setModalAbierto(false)} 
-        onSuccess={cargarDatos} 
-        planes={planes} 
-      />
+      <ModalCrearCliente isOpen={modalAbierto} onClose={() => setModalAbierto(false)} onSuccess={cargarDatos} planes={planes} />
     </div>
   );
 }

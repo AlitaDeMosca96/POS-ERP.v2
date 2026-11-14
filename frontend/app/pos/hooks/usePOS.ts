@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { fetcher } from '../../../lib/api';
 
 export interface Categoria { id: string; nombre: string; }
 export interface Mesa { id: string; nombre: string; estado: string; }
@@ -10,11 +11,8 @@ export interface ItemCarrito extends Producto { cantidad: number; notas?: string
 
 export function usePOS() {
   const router = useRouter();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 
-  // Estados Generales
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
   const [mesas, setMesas] = useState<Mesa[]>([]);
@@ -22,13 +20,11 @@ export function usePOS() {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Estados de Selección
   const [mesaActivaId, setMesaActivaId] = useState<string>('');
   const [clienteActivoId, setClienteActivoId] = useState<string>('');
   const [pedidoActualId, setPedidoActualId] = useState<string | null>(null);
   const [categoriaActiva, setCategoriaActiva] = useState<string>('ALL');
 
-  // Estados de Modales
   const [productoModificando, setProductoModificando] = useState<Producto | null>(null);
   const [modificadoresDisponibles, setModificadoresDisponibles] = useState<Modificador[]>([]);
   const [modificadoresSeleccionados, setModificadoresSeleccionados] = useState<Modificador[]>([]);
@@ -36,26 +32,27 @@ export function usePOS() {
   const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
   useEffect(() => {
-    if (!token) { router.push('/'); return; }
-
     const cargarDatos = async () => {
       try {
-        const urlMesas = sucursalActiva ? `${apiUrl}/mesas?sucursalId=${sucursalActiva}` : `${apiUrl}/mesas`;
-        const [resProd, resCat, resMesas, resCli] = await Promise.all([
-          fetch(`${apiUrl}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${apiUrl}/categorias`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(`${apiUrl}/clientes`, { headers: { Authorization: `Bearer ${token}` } })
+        const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
+        const [prods, cats, mess, clis] = await Promise.all([
+          fetcher('/productos'),
+          fetcher('/categorias'),
+          fetcher(urlMesas),
+          fetcher('/clientes')
         ]);
-        setProductos(await resProd.json());
-        setCategorias(await resCat.json());
-        setMesas(await resMesas.json());
-        setClientes(await resCli.json());
+        setProductos(prods || []);
+        setCategorias(cats || []);
+        setMesas(mess || []);
+        setClientes(clis || []);
+      } catch (error) {
+        console.error(error);
+      } finally {
         setLoading(false);
-      } catch (error) { console.error(error); setLoading(false); }
+      }
     };
     cargarDatos();
-  }, [router, token, sucursalActiva, apiUrl]);
+  }, [sucursalActiva]);
 
   const handleMesaChange = async (nuevaMesaId: string) => {
     setMesaActivaId(nuevaMesaId);
@@ -64,35 +61,32 @@ export function usePOS() {
     if (!nuevaMesaId) return;
 
     try {
-      const res = await fetch(`${apiUrl}/pedidos/mesa/${nuevaMesaId}`, { headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const texto = await res.text();
-        if (texto) {
-          const pedidoAbierto = JSON.parse(texto);
-          if (pedidoAbierto && pedidoAbierto.id) {
-            setPedidoActualId(pedidoAbierto.id);
-            setCarrito(pedidoAbierto.detalles.map((det: any) => ({
-              id: det.producto.id, nombre: det.producto.nombre, precio: Number(det.precioUnitario),
-              cantidad: Number(det.cantidad), stock: 999, notas: det.notas
-            })));
-          }
-        }
+      const pedidoAbierto = await fetcher(`/pedidos/mesa/${nuevaMesaId}`);
+      if (pedidoAbierto && pedidoAbierto.id) {
+        setPedidoActualId(pedidoAbierto.id);
+        setCarrito(pedidoAbierto.detalles.map((det: any) => ({
+          id: det.producto.id, nombre: det.producto.nombre, precio: Number(det.precioUnitario),
+          cantidad: Number(det.cantidad), stock: 999, notas: det.notas
+        })));
       }
-    } catch (error) { console.error(error); }
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const handleProductoClick = async (producto: Producto) => {
     try {
-      const res = await fetch(`${apiUrl}/modificadores/producto/${producto.id}`, { headers: { Authorization: `Bearer ${token}` } });
-      const mods = await res.json();
-      if (mods.length > 0) {
+      const mods = await fetcher(`/modificadores/producto/${producto.id}`);
+      if (mods && mods.length > 0) {
         setProductoModificando(producto);
         setModificadoresDisponibles(mods);
         setModificadoresSeleccionados([]);
       } else {
         agregarAlCarrito(producto, producto.precio, '');
       }
-    } catch (error) { agregarAlCarrito(producto, producto.precio, ''); }
+    } catch (error) {
+      agregarAlCarrito(producto, producto.precio, '');
+    }
   };
 
   const agregarAlCarrito = (producto: Producto, precioFinal: number, notas: string) => {
@@ -117,12 +111,12 @@ export function usePOS() {
   const liberarMesaVacia = async () => {
     try {
       if (pedidoActualId) {
-        await fetch(`${apiUrl}/pedidos/${pedidoActualId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ estado: 'PAGADO' }) });
+        await fetcher(`/pedidos/${pedidoActualId}`, { method: 'PATCH', body: JSON.stringify({ estado: 'PAGADO' }) });
       }
-      await fetch(`${apiUrl}/mesas/${mesaActivaId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify({ estado: 'LIBRE' }) });
+      await fetcher(`/mesas/${mesaActivaId}`, { method: 'PATCH', body: JSON.stringify({ estado: 'LIBRE' }) });
       setMesaActivaId(''); setPedidoActualId(null);
-      const urlMesas = sucursalActiva ? `${apiUrl}/mesas?sucursalId=${sucursalActiva}` : `${apiUrl}/mesas`;
-      setMesas(await (await fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } })).json());
+      const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
+      setMesas(await fetcher(urlMesas) || []);
     } catch (error) { console.error(error); }
   };
 
@@ -136,19 +130,15 @@ export function usePOS() {
     };
 
     try {
-      const res = await fetch(`${apiUrl}/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(pedidoData) });
-      if (res.ok) {
-        setVentaExitosa(await res.json());
-        setCarrito([]); setMesaActivaId(''); setClienteActivoId(''); setPedidoActualId(null); setModalPagoAbierto(false);
-        const urlMesas = sucursalActiva ? `${apiUrl}/mesas?sucursalId=${sucursalActiva}` : `${apiUrl}/mesas`;
-        const [resProd, resMesas] = await Promise.all([
-          fetch(`${apiUrl}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setProductos(await resProd.json());
-        setMesas(await resMesas.json());
-      } else { alert('Error al procesar pago'); }
-    } catch (error) { console.error(error); }
+      const ventaData = await fetcher('/pedidos', { method: 'POST', body: JSON.stringify(pedidoData) });
+      setVentaExitosa(ventaData);
+      setCarrito([]); setMesaActivaId(''); setClienteActivoId(''); setPedidoActualId(null); setModalPagoAbierto(false);
+      
+      const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
+      const [prods, mess] = await Promise.all([ fetcher('/productos'), fetcher(urlMesas) ]);
+      setProductos(prods || []);
+      setMesas(mess || []);
+    } catch (error: any) { alert(`Error: ${error.message}`); }
   };
 
   const guardarMesa = async () => {
@@ -161,18 +151,14 @@ export function usePOS() {
       detalles: carrito.map(item => ({ productoId: item.id, cantidad: item.cantidad, notas: item.notas }))
     };
     try {
-      const res = await fetch(`${apiUrl}/pedidos`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }, body: JSON.stringify(pedidoData) });
-      if (res.ok) {
-        alert('Mesa guardada correctamente');
-        setCarrito([]); setMesaActivaId(''); setClienteActivoId(''); setPedidoActualId(null);
-        const urlMesas = sucursalActiva ? `${apiUrl}/mesas?sucursalId=${sucursalActiva}` : `${apiUrl}/mesas`;
-        const [resProd, resMesas] = await Promise.all([
-          fetch(`${apiUrl}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
-          fetch(urlMesas, { headers: { Authorization: `Bearer ${token}` } })
-        ]);
-        setProductos(await resProd.json());
-        setMesas(await resMesas.json());
-      }
+      await fetcher('/pedidos', { method: 'POST', body: JSON.stringify(pedidoData) });
+      alert('Mesa guardada correctamente');
+      setCarrito([]); setMesaActivaId(''); setClienteActivoId(''); setPedidoActualId(null);
+      
+      const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
+      const [prods, mess] = await Promise.all([ fetcher('/productos'), fetcher(urlMesas) ]);
+      setProductos(prods || []);
+      setMesas(mess || []);
     } catch (error) { console.error(error); }
   };
 

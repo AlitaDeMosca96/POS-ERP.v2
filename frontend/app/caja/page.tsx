@@ -2,70 +2,34 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { fetcher } from '../../lib/api';
 
-interface Caja {
-  id: string;
-  saldoInicial: number;
-  estado: string;
-  fechaApertura: string;
-}
-
-interface Movimiento {
-  id: string;
-  tipo: string;
-  monto: number;
-  motivo: string;
-  fecha: string;
-}
-
-interface Resumen {
-  caja: Caja;
-  movimientos: Movimiento[];
-  ingresos: number;
-  sangrias: number;
-  totalVentasEfectivo: number;
-  saldoEsperado: number;
-}
+interface Caja { id: string; saldoInicial: number; estado: string; fechaApertura: string; }
+interface Movimiento { id: string; tipo: string; monto: number; motivo: string; fecha: string; }
+interface Resumen { caja: Caja; movimientos: Movimiento[]; ingresos: number; sangrias: number; totalVentasEfectivo: number; saldoEsperado: number; }
 
 export default function CajaPage() {
   const router = useRouter();
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
-  
   const [montoApertura, setMontoApertura] = useState('');
   const [montoCierre, setMontoCierre] = useState('');
-
   const [movTipo, setMovTipo] = useState('SANGRIA');
   const [movMonto, setMovMonto] = useState('');
   const [movMotivo, setMovMotivo] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 
-  useEffect(() => {
-    if (!token) {
-      router.push('/');
-      return;
-    }
-    verificarCaja();
-  }, [router, token]);
+  useEffect(() => { verificarCaja(); }, []);
 
   const verificarCaja = async () => {
     try {
-      const res = await fetch('/api/cajas/abierta', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      
-      if (res.ok) {
-        const texto = await res.text();
-        if (texto && texto !== 'null') {
-          const caja = JSON.parse(texto);
-          cargarResumen(caja.id);
-        } else {
-          setResumen(null);
-          setLoading(false);
-        }
+      const caja = await fetcher('/cajas/abierta');
+      if (caja && caja.id) {
+        cargarResumen(caja.id);
       } else {
+        setResumen(null);
         setLoading(false);
       }
     } catch (error) {
@@ -76,15 +40,11 @@ export default function CajaPage() {
 
   const cargarResumen = async (cajaId: string) => {
     try {
-      const res = await fetch(`/api/cajas/${cajaId}/resumen`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.ok) {
-        setResumen(await res.json());
-      }
-      setLoading(false);
+      const data = await fetcher(`/cajas/${cajaId}/resumen`);
+      setResumen(data);
     } catch (error) {
       console.error(error);
+    } finally {
       setLoading(false);
     }
   };
@@ -92,23 +52,15 @@ export default function CajaPage() {
   const handleAbrirCaja = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/cajas/apertura', {
+      await fetcher('/cajas/apertura', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ 
-          saldoInicial: Number(montoApertura),
-          sucursalId: sucursalActiva || null // <-- Le pasamos la sucursal activa
-        })
+        body: JSON.stringify({ saldoInicial: Number(montoApertura), sucursalId: sucursalActiva || null })
       });
-
-      if (res.ok) {
-        alert('Caja abierta con éxito');
-        setMontoApertura('');
-        verificarCaja();
-      }
-    } catch (error) {
-      console.error(error);
-    }
+      toast.success('Caja abierta con éxito');
+      setMontoApertura('');
+      setLoading(true);
+      verificarCaja();
+    } catch (error: any) { toast.error(error.message || 'Error al abrir la caja'); }
   };
 
   const handleCerrarCaja = async (e: React.FormEvent) => {
@@ -123,46 +75,34 @@ export default function CajaPage() {
     if (!confirm(msj)) return;
 
     try {
-      const res = await fetch(`/api/cajas/${resumen.caja.id}/cierre`, {
+      const res = await fetcher(`/cajas/${resumen.caja.id}/cierre`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ saldoFinal: Number(montoCierre) })
       });
-
-      if (res.ok) {
-        alert('Caja cerrada con éxito');
-        setMontoCierre('');
-        verificarCaja();
+      
+      if (res && res.diferencia !== 0) {
+        alert(`Caja cerrada con una diferencia de $${res.diferencia}`);
+      } else {
+        toast.success('Caja cerrada con éxito');
       }
-    } catch (error) {
-      console.error(error);
-    }
+      
+      setMontoCierre('');
+      setLoading(true);
+      verificarCaja();
+    } catch (error: any) { toast.error(error.message || 'Error al cerrar caja'); }
   };
 
   const handleRegistrarMovimiento = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resumen) return;
-
     try {
-      const res = await fetch('/api/cajas/movimientos', {
+      await fetcher('/cajas/movimientos', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({
-          tipo: movTipo,
-          monto: Number(movMonto),
-          motivo: movMotivo,
-          cajaId: resumen.caja.id
-        })
+        body: JSON.stringify({ tipo: movTipo, monto: Number(movMonto), motivo: movMotivo, cajaId: resumen.caja.id })
       });
-
-      if (res.ok) {
-        setMovMonto('');
-        setMovMotivo('');
-        cargarResumen(resumen.caja.id);
-      }
-    } catch (error) {
-      console.error(error);
-    }
+      setMovMonto(''); setMovMotivo('');
+      cargarResumen(resumen.caja.id);
+    } catch (error: any) { toast.error(error.message || 'Error al registrar movimiento'); }
   };
 
   if (loading) return <div className="p-10 text-center">Verificando estado de la caja...</div>;
@@ -170,12 +110,9 @@ export default function CajaPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-6xl mx-auto space-y-6">
-        
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold text-gray-800">Gestión de Caja</h1>
-          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">
-            Volver al Dashboard
-          </button>
+          <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">Volver al Dashboard</button>
         </div>
 
         {!resumen ? (
@@ -187,22 +124,14 @@ export default function CajaPage() {
             <form onSubmit={handleAbrirCaja} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Monto Inicial (Efectivo para vuelto)</label>
-                <input
-                  type="number" required value={montoApertura} onChange={e => setMontoApertura(e.target.value)}
-                  className="w-full border p-3 rounded text-gray-800 focus:ring-2 focus:ring-green-500"
-                  placeholder="Ej: 5000"
-                />
+                <input type="number" required value={montoApertura} onChange={e => setMontoApertura(e.target.value)} className="w-full border p-3 rounded text-gray-800 focus:ring-2 focus:ring-green-500" placeholder="Ej: 5000" />
               </div>
-              <button type="submit" className="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition text-lg">
-                Abrir Caja
-              </button>
+              <button type="submit" className="w-full bg-green-600 text-white font-bold p-3 rounded hover:bg-green-700 transition text-lg">Abrir Caja</button>
             </form>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
             <div className="lg:col-span-1 space-y-6">
-              
               <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
                 <h2 className="text-xl font-bold text-green-700 mb-4 border-b pb-2">Resumen del Turno</h2>
                 <div className="space-y-2 text-gray-600">
@@ -211,9 +140,7 @@ export default function CajaPage() {
                   <p className="flex justify-between text-blue-600"><span>Ingresos Manuales:</span> <span className="font-bold">+${resumen.ingresos}</span></p>
                   <p className="flex justify-between text-red-600"><span>Sangrías:</span> <span className="font-bold">-${resumen.sangrias}</span></p>
                   <div className="border-t pt-2 mt-2">
-                    <p className="flex justify-between text-xl font-bold text-gray-800">
-                      <span>En Caja:</span> <span>${resumen.saldoEsperado.toFixed(2)}</span>
-                    </p>
+                    <p className="flex justify-between text-xl font-bold text-gray-800"><span>En Caja:</span> <span>${resumen.saldoEsperado.toFixed(2)}</span></p>
                   </div>
                 </div>
               </div>
@@ -227,9 +154,7 @@ export default function CajaPage() {
                   </select>
                   <input type="number" placeholder="Monto" required value={movMonto} onChange={e => setMovMonto(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
                   <input type="text" placeholder="Motivo (Ej: Pago proveedor)" required value={movMotivo} onChange={e => setMovMotivo(e.target.value)} className="w-full border p-2 rounded text-gray-800" />
-                  <button type="submit" className="w-full bg-gray-800 text-white font-bold p-2 rounded hover:bg-gray-900">
-                    Guardar Movimiento
-                  </button>
+                  <button type="submit" className="w-full bg-gray-800 text-white font-bold p-2 rounded hover:bg-gray-900">Guardar Movimiento</button>
                 </form>
               </div>
 
@@ -238,40 +163,30 @@ export default function CajaPage() {
                 <form onSubmit={handleCerrarCaja} className="space-y-3">
                   <label className="text-sm text-gray-600 block">Contá el efectivo físico y poné el total:</label>
                   <input type="number" required value={montoCierre} onChange={e => setMontoCierre(e.target.value)} className="w-full border p-2 rounded text-gray-800 focus:ring-2 focus:ring-red-500" placeholder="Monto contado" />
-                  <button type="submit" className="w-full bg-red-600 text-white font-bold p-2 rounded hover:bg-red-700">
-                    Cerrar Caja
-                  </button>
+                  <button type="submit" className="w-full bg-red-600 text-white font-bold p-2 rounded hover:bg-red-700">Cerrar Caja</button>
                 </form>
               </div>
-
             </div>
 
             <div className="lg:col-span-2">
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 h-full p-6">
                 <h2 className="text-xl font-bold text-gray-800 mb-4">Movimientos Manuales</h2>
-                {resumen.movimientos.length === 0 ? (
-                  <p className="text-gray-500 text-center mt-10">No hay sangrías ni ingresos registrados.</p>
-                ) : (
+                {resumen.movimientos.length === 0 ? <p className="text-gray-500 text-center mt-10">No hay sangrías ni ingresos registrados.</p> : (
                   <ul className="space-y-3">
                     {resumen.movimientos.map(mov => (
                       <li key={mov.id} className="flex justify-between items-center p-3 border rounded-lg bg-gray-50">
                         <div>
-                          <p className={`font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>
-                            {mov.tipo === 'INGRESO' ? 'Ingreso' : 'Sangría'}
-                          </p>
+                          <p className={`font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>{mov.tipo === 'INGRESO' ? 'Ingreso' : 'Sangría'}</p>
                           <p className="text-sm text-gray-600">{mov.motivo}</p>
                           <p className="text-xs text-gray-400">{new Date(mov.fecha).toLocaleTimeString()}</p>
                         </div>
-                        <span className={`text-xl font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>
-                          {mov.tipo === 'INGRESO' ? '+' : '-'}${mov.monto}
-                        </span>
+                        <span className={`text-xl font-bold ${mov.tipo === 'INGRESO' ? 'text-blue-600' : 'text-red-600'}`}>{mov.tipo === 'INGRESO' ? '+' : '-'}${mov.monto}</span>
                       </li>
                     ))}
                   </ul>
                 )}
               </div>
             </div>
-
           </div>
         )}
       </div>
