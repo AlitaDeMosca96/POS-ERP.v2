@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast'; // <-- NUEVO
 
 interface Empresa { id: string; nombre: string; cuit: string; activa: boolean; usuarios: number; totalVentas: number; fechaAlta: string; plan?: string; }
 interface Plan { id: string; nombre: string; precioMensual: number; }
@@ -11,6 +12,9 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [planes, setPlanes] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // NUEVO: Filtro de estado
+  const [filtroEstado, setFiltroEstado] = useState('TODOS');
 
   const [modalAbierto, setModalAbierto] = useState(false);
   const [nombre, setNombre] = useState('');
@@ -49,12 +53,12 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
         body: JSON.stringify({ nombre, cuit, adminNombre, adminEmail, adminPassword, planId })
       });
       if (res.ok) {
-        alert('¡Empresa creada con éxito!');
+        toast.success('¡Empresa creada con éxito!'); // <-- TOAST
         setModalAbierto(false);
         setNombre(''); setCuit(''); setAdminNombre(''); setAdminEmail(''); setAdminPassword('');
         cargarDatos();
       }
-    } catch (error) { console.error(error); }
+    } catch (error) { toast.error('Error al crear empresa'); }
   };
 
   const handleToggleEstado = async (id: string, estadoActual: boolean) => {
@@ -62,8 +66,9 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
     if (!confirm(`¿Estás seguro de ${accion} esta empresa?`)) return;
     try {
       await fetch(`http://localhost:3000/super-admin/empresas/${id}/toggle`, { method: 'PATCH', headers: { Authorization: `Bearer ${token}` } });
+      toast.success(`Empresa ${estadoActual ? 'suspendida' : 'activada'}`); // <-- TOAST
       cargarDatos();
-    } catch (error) { console.error(error); }
+    } catch (error) { toast.error('Error al cambiar estado'); }
   };
 
   const handleImpersonar = async (id: string) => {
@@ -77,23 +82,37 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
         localStorage.removeItem('sucursalActiva');
         router.push('/dashboard');
       }
-    } catch (error) { console.error(error); }
+    } catch (error) { toast.error('Error al impersonar'); }
   };
 
   if (loading) return <div className="text-[#D4AF37] animate-pulse">Cargando clientes...</div>;
 
-  // FILTRADO POR BUSCADOR
-  const empresasFiltradas = empresas.filter(e => 
-    e.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    e.cuit.includes(searchQuery)
-  );
+  // FILTRADO POR BUSCADOR Y BOTONES RÁPIDOS
+  const empresasFiltradas = empresas.filter(e => {
+    const coincideNombre = e.nombre.toLowerCase().includes(searchQuery.toLowerCase()) || e.cuit.includes(searchQuery);
+    const coincideEstado = 
+      filtroEstado === 'TODOS' ? true :
+      filtroEstado === 'ACTIVAS' ? e.activa :
+      !e.activa;
+      
+    return coincideNombre && coincideEstado;
+  });
 
   return (
     <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 shadow-xl overflow-hidden">
-      <div className="p-6 border-b border-gray-800 flex justify-between items-center">
-        <h2 className="text-lg font-light text-white uppercase tracking-widest">
-          Directorio de Empresas {searchQuery && `(Filtrado: ${searchQuery})`}
-        </h2>
+      <div className="p-6 border-b border-gray-800 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+          <h2 className="text-lg font-light text-white uppercase tracking-widest">
+            Directorio de Empresas {searchQuery && `(Filtrado: ${searchQuery})`}
+          </h2>
+          {/* BOTONES DE FILTRO RÁPIDO */}
+          <div className="flex gap-2 mt-4">
+            <button onClick={() => setFiltroEstado('TODOS')} className={`px-3 py-1 text-xs font-bold rounded ${filtroEstado === 'TODOS' ? 'bg-gray-700 text-white' : 'bg-[#111] text-gray-500 hover:text-white'}`}>TODAS</button>
+            <button onClick={() => setFiltroEstado('ACTIVAS')} className={`px-3 py-1 text-xs font-bold rounded ${filtroEstado === 'ACTIVAS' ? 'bg-green-900/50 text-green-400 border border-green-900' : 'bg-[#111] text-gray-500 hover:text-green-400'}`}>ACTIVAS</button>
+            <button onClick={() => setFiltroEstado('SUSPENDIDAS')} className={`px-3 py-1 text-xs font-bold rounded ${filtroEstado === 'SUSPENDIDAS' ? 'bg-red-900/50 text-red-400 border border-red-900' : 'bg-[#111] text-gray-500 hover:text-red-400'}`}>SUSPENDIDAS</button>
+          </div>
+        </div>
+        
         <button onClick={() => setModalAbierto(true)} className="bg-[#111] border border-[#D4AF37]/50 text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black font-bold py-2 px-6 rounded transition-all text-xs uppercase tracking-widest">
           + Nueva Empresa
         </button>
@@ -119,7 +138,7 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
               </td>
               <td className="p-4 text-center"><span className="bg-gray-800 text-gray-300 px-2 py-1 rounded text-xs">{emp.plan}</span></td>
               <td className="p-4 text-center"><span className="bg-gray-900 text-gray-400 px-3 py-1 rounded-full text-xs font-bold border border-gray-800">{emp.usuarios}</span></td>
-              <td className="p-4 text-right font-light text-[#D4AF37]">${emp.totalVentas.toFixed(2)}</td>
+              <td className="p-4 text-right font-light text-[#D4AF37]">${emp.totalVentas.toLocaleString('es-AR')}</td>
               <td className="p-4 text-center">
                 <span className={`px-3 py-1 rounded-full text-xs font-bold border ${emp.activa ? 'bg-[#D4AF37]/10 text-[#D4AF37] border-[#D4AF37]/20' : 'bg-red-900/20 text-red-400 border-red-900'}`}>
                   {emp.activa ? 'ACTIVA' : 'SUSPENDIDA'}
@@ -137,7 +156,7 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
         </tbody>
       </table>
 
-      {/* MODAL CREAR EMPRESA */}
+      {/* MODAL CREAR EMPRESA (Sin cambios) */}
       {modalAbierto && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-[#0a0a0a] rounded-xl shadow-2xl w-full max-w-lg overflow-hidden border border-[#D4AF37]/30">

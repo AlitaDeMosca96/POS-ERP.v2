@@ -1,6 +1,9 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { 
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer 
+} from 'recharts';
 
 interface Metrics {
   mrr: number;
@@ -21,92 +24,182 @@ export default function DashboardView({ setSeccionActiva }: { setSeccionActiva: 
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const fetchMetrics = async () => {
     const token = localStorage.getItem('token');
-    fetch('http://localhost:3000/super-admin/metrics', {
-      headers: { Authorization: `Bearer ${token}` }
-    })
-      .then(res => res.json())
-      .then(data => {
-        setMetrics(data);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
+    try {
+      const res = await fetch('http://localhost:3000/super-admin/metrics', {
+        headers: { Authorization: `Bearer ${token}` }
       });
+      const data = await res.json();
+      setMetrics(data);
+      setLoading(false);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    fetchMetrics();
+    const interval = setInterval(fetchMetrics, 30000); // Auto-refresh
+    return () => clearInterval(interval);
   }, []);
 
-  if (loading) return <div className="text-[#D4AF37] animate-pulse">Cargando métricas...</div>;
-  if (!metrics) return <div className="text-red-500">Error al cargar métricas.</div>;
+  const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (seconds < 60) return `Hace ${seconds} seg`;
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60) return `Hace ${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `Hace ${hours} hs`;
+    const days = Math.floor(hours / 24);
+    return `Hace ${days} días`;
+  };
+
+  if (loading || !metrics) return (
+    <div className="space-y-6 animate-pulse">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {[1,2,3,4].map(i => <div key={i} className="h-32 bg-[#111] rounded-xl border border-gray-800"></div>)}
+      </div>
+      <div className="h-72 bg-[#111] rounded-xl border border-gray-800"></div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="h-64 bg-[#111] rounded-xl border border-gray-800"></div>
+        <div className="lg:col-span-2 h-64 bg-[#111] rounded-xl border border-gray-800"></div>
+      </div>
+    </div>
+  );
 
   const usoMemoriaNum = parseFloat(metrics.servidor.usoMemoria);
   let colorMemoria = 'bg-green-500';
   if (usoMemoriaNum > 70) colorMemoria = 'bg-yellow-500';
   if (usoMemoriaNum > 85) colorMemoria = 'bg-red-500';
 
+  // DATOS MOCK PARA EL GRÁFICO (Simulamos los últimos 5 meses)
+  // Cuando conectemos la base de datos histórica, esto vendrá de la API
+  const chartData = [
+    { name: 'Junio', mrr: metrics.mrr > 0 ? metrics.mrr * 0.2 : 0 },
+    { name: 'Julio', mrr: metrics.mrr > 0 ? metrics.mrr * 0.45 : 0 },
+    { name: 'Agosto', mrr: metrics.mrr > 0 ? metrics.mrr * 0.6 : 0 },
+    { name: 'Septiembre', mrr: metrics.mrr > 0 ? metrics.mrr * 0.8 : 0 },
+    { name: 'Octubre', mrr: metrics.mrr > 0 ? metrics.mrr * 0.9 : 0 },
+    { name: 'Noviembre', mrr: metrics.mrr },
+  ];
+
   return (
     <div className="space-y-6">
       
       {/* 1. TARJETAS DE MÉTRICAS */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-[#0a0a0a] p-5 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_20px_rgba(212,175,55,0.05)] relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-1 h-full bg-[#D4AF37]"></div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 relative">
+        <div className="group relative bg-[#0a0a0a] p-5 rounded-xl border border-[#D4AF37]/30 shadow-[0_0_20px_rgba(212,175,55,0.05)] hover:shadow-[0_0_30px_rgba(212,175,55,0.15)] hover:-translate-y-1 transition-all duration-300 cursor-default">
+          <div className="absolute top-0 left-0 w-1 h-full bg-[#D4AF37] rounded-l-xl"></div>
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-[#D4AF37] text-xs font-medium uppercase tracking-widest" title="Ingreso Mensual Recurrente">MRR (Mensual)</h3>
-            <span className="text-green-400 text-xs font-bold flex items-center bg-green-900/20 px-2 py-0.5 rounded">
-              +12% <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-            </span>
+            <h3 className="text-[#D4AF37] text-xs font-medium uppercase tracking-widest border-b border-dashed border-[#D4AF37]/50 pb-0.5 cursor-help">MRR (Mensual)</h3>
+            <span className="text-gray-500 text-xs font-bold flex items-center bg-gray-800/50 px-2 py-0.5 rounded">-- %</span>
           </div>
-          <p className="text-3xl font-light text-white">${metrics.mrr.toLocaleString()}</p>
+          <p className="text-3xl font-light text-white">${metrics.mrr.toLocaleString('es-AR')}</p>
           <p className="text-gray-600 text-xs mt-2">vs mes anterior</p>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-black border border-gray-700 text-gray-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] text-center shadow-2xl">
+            Ingreso Mensual Recurrente: Suma de los planes activos.
+          </div>
         </div>
 
-        <div className="bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 group-hover:bg-[#D4AF37]/50 transition-colors"></div>
+        <div className="group relative bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-default">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 rounded-t-xl group-hover:bg-[#D4AF37]/50 transition-colors"></div>
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest">Empresas Activas</h3>
-            <span className="text-green-400 text-xs font-bold flex items-center bg-green-900/20 px-2 py-0.5 rounded">
-              +2 <svg className="w-3 h-3 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M5 10l7-7m0 0l7 7m-7-7v18"></path></svg>
-            </span>
+            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest border-b border-dashed border-gray-600 pb-0.5 cursor-help">Empresas Activas</h3>
+            <span className="text-gray-500 text-xs font-bold flex items-center bg-gray-800/50 px-2 py-0.5 rounded">--</span>
           </div>
           <p className="text-3xl font-light text-white">{metrics.empresasActivas}</p>
           <p className="text-gray-600 text-xs mt-2">en la red</p>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-black border border-gray-700 text-gray-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] text-center shadow-2xl">
+            Empresas que tienen acceso activo al sistema.
+          </div>
         </div>
 
-        <div className="bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 group-hover:bg-red-500/50 transition-colors"></div>
+        <div className="group relative bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-default">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 rounded-t-xl group-hover:bg-red-500/50 transition-colors"></div>
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest">Suspendidas</h3>
+            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest border-b border-dashed border-gray-600 pb-0.5 cursor-help">Suspendidas</h3>
           </div>
           <p className="text-3xl font-light text-white">{metrics.empresasSuspendidas}</p>
           <p className="text-red-400/70 text-xs mt-2">requieren atención</p>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-black border border-gray-700 text-gray-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] text-center shadow-2xl">
+            Empresas bloqueadas por falta de pago o manualmente.
+          </div>
         </div>
 
-        <div className="bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 group-hover:bg-blue-500/50 transition-colors"></div>
+        <div className="group relative bg-[#0a0a0a] p-5 rounded-xl border border-gray-800 shadow-xl hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 cursor-default">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gray-800 rounded-t-xl group-hover:bg-blue-500/50 transition-colors"></div>
           <div className="flex justify-between items-start mb-2">
-            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest">Usuarios Globales</h3>
+            <h3 className="text-gray-500 text-xs font-medium uppercase tracking-widest border-b border-dashed border-gray-600 pb-0.5 cursor-help">Usuarios Globales</h3>
           </div>
-          <p className="text-3xl font-light text-white">{metrics.totalUsuarios}</p>
+          <p className="text-3xl font-light text-white">{metrics.totalUsuarios.toLocaleString('es-AR')}</p>
           <p className="text-gray-600 text-xs mt-2">registrados</p>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-48 p-2 bg-black border border-gray-700 text-gray-300 text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] text-center shadow-2xl">
+            Total de personas con cuenta en todas las empresas.
+          </div>
         </div>
       </div>
 
+      {/* 2. GRÁFICO DE EVOLUCIÓN DEL MRR */}
+      <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 shadow-xl p-6">
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h3 className="text-lg font-light text-white uppercase tracking-widest">Evolución de Ingresos</h3>
+            <p className="text-gray-500 text-xs mt-1">Proyección estimada de MRR en los últimos 6 meses</p>
+          </div>
+          <div className="bg-[#111] border border-gray-700 text-[#D4AF37] text-xs font-bold px-3 py-1 rounded">
+            MRR: ${metrics.mrr.toLocaleString('es-AR')}
+          </div>
+        </div>
+        
+        <div className="h-72 w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart
+              data={chartData}
+              margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+            >
+              <defs>
+                <linearGradient id="colorMrr" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#D4AF37" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#D4AF37" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+              <XAxis dataKey="name" stroke="#555" tick={{ fill: '#666', fontSize: 12 }} tickLine={false} axisLine={false} />
+              <YAxis stroke="#555" tick={{ fill: '#666', fontSize: 12 }} tickLine={false} axisLine={false} tickFormatter={(value) => `$${value}`} />
+              <RechartsTooltip 
+                contentStyle={{ backgroundColor: '#111', borderColor: '#333', borderRadius: '8px', color: '#fff' }}
+                itemStyle={{ color: '#D4AF37', fontWeight: 'bold' }}
+                formatter={(value: number) => [`$${value.toLocaleString('es-AR')}`, 'MRR']}
+              />
+              <Area 
+                type="monotone" 
+                dataKey="mrr" 
+                stroke="#D4AF37" 
+                strokeWidth={3}
+                fillOpacity={1} 
+                fill="url(#colorMrr)" 
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* 3. ACCIONES, SALUD Y AUDITORÍA */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* 2. ACCIONES RÁPIDAS Y SALUD */}
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-[#0a0a0a] rounded-xl border border-gray-800 shadow-xl p-5">
             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-widest mb-4">Acciones Rápidas</h3>
             <div className="grid grid-cols-2 gap-3">
-              
-              <button onClick={() => setSeccionActiva('clientes')} className="bg-[#111] border border-gray-700 hover:border-[#D4AF37] p-3 rounded-lg flex flex-col items-center justify-center transition-all text-gray-400 hover:text-[#D4AF37]">
+              <button onClick={() => setSeccionActiva('clientes')} className="bg-[#111] border border-gray-700 hover:border-[#D4AF37] p-3 rounded-lg flex flex-col items-center justify-center transition-all text-gray-400 hover:text-[#D4AF37] hover:scale-105">
                 <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M12 4v16m8-8H4"></path></svg>
                 <span className="text-xs font-medium">Nuevo Cliente</span>
               </button>
-              
-              <button onClick={() => setSeccionActiva('operaciones')} className="bg-[#111] border border-gray-700 hover:border-[#D4AF37] p-3 rounded-lg flex flex-col items-center justify-center transition-all text-gray-400 hover:text-[#D4AF37]">
+              <button onClick={() => setSeccionActiva('operaciones')} className="bg-[#111] border border-gray-700 hover:border-[#D4AF37] p-3 rounded-lg flex flex-col items-center justify-center transition-all text-gray-400 hover:text-[#D4AF37] hover:scale-105">
                 <svg className="w-6 h-6 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                 <span className="text-xs font-medium">Ver Reportes</span>
               </button>
@@ -137,7 +230,6 @@ export default function DashboardView({ setSeccionActiva }: { setSeccionActiva: 
           </div>
         </div>
 
-        {/* 3. ACTIVIDAD RECIENTE REAL */}
         <div className="lg:col-span-2 bg-[#0a0a0a] rounded-xl border border-gray-800 shadow-xl p-6">
           <div className="flex justify-between items-center mb-6 border-b border-gray-800 pb-2">
             <h3 className="text-sm font-medium text-gray-400 uppercase tracking-widest">Actividad y Auditoría Reciente</h3>
@@ -155,13 +247,13 @@ export default function DashboardView({ setSeccionActiva }: { setSeccionActiva: 
                 if (log.tipo === 'warning') iconColor = 'text-yellow-400 bg-yellow-900/30 border-yellow-500/30';
 
                 return (
-                  <li key={log.id} className="relative flex items-start gap-4">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10 border ${iconColor}`}>
+                  <li key={log.id} className="relative flex items-start gap-4 group">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 z-10 border ${iconColor} group-hover:scale-110 transition-transform`}>
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
-                    <div className="flex-1 bg-[#111] border border-gray-800 p-3 rounded-lg">
+                    <div className="flex-1 bg-[#111] border border-gray-800 p-3 rounded-lg group-hover:bg-[#151515] transition-colors">
                       <p className="text-sm text-gray-300">{log.accion}</p>
-                      <p className="text-xs text-gray-600 mt-1">{new Date(log.fecha).toLocaleString('es-AR')}</p>
+                      <p className="text-xs text-gray-600 mt-1">{timeAgo(log.fecha)}</p>
                     </div>
                   </li>
                 );

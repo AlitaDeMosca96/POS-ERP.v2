@@ -2,16 +2,28 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { Toaster } from 'react-hot-toast';
 import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
+// ... import other views ...
 
 export default function SuperAdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [seccionActiva, setSeccionActiva] = useState('dashboard');
-  const [searchQuery, setSearchQuery] = useState(''); // <-- NUEVO ESTADO PARA EL BUSCADOR
+  
+  // 1. Persistencia: Leemos del localStorage al iniciar
+  const [seccionActiva, setSeccionActiva] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('sa_active_section') || 'dashboard';
+    }
+    return 'dashboard';
+  });
+  
+  const [searchQuery, setSearchQuery] = useState('');
+  const [empresasList, setEmpresasList] = useState<{id: string, nombre: string}[]>([]);
+  
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => {
@@ -27,19 +39,29 @@ export default function SuperAdminPage() {
         return;
       }
     }
-    setLoading(false);
+    
+    fetch('http://localhost:3000/super-admin/empresas', { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => res.json())
+      .then(data => {
+        setEmpresasList(data.map((e: any) => ({ id: e.id, nombre: e.nombre })));
+        setLoading(false);
+      });
   }, [router, token]);
 
+  // 2. Función para cambiar de pestaña y guardarla
+  const handleSetSeccion = (seccion: string) => {
+    setSeccionActiva(seccion);
+    localStorage.setItem('sa_active_section', seccion);
+  };
+
   const handleLogout = () => {
-    localStorage.clear();
+    localStorage.clear(); // Esto borra el token y la sección activa
     router.push('/master-login');
   };
 
-  // FUNCIÓN DEL BUSCADOR
   const handleSearch = (query: string) => {
     setSearchQuery(query);
-    setSeccionActiva('clientes'); // Te lleva a clientes
-    // En el próximo paso, haremos que ClientesView filtre por este query
+    handleSetSeccion('clientes');
   };
 
   if (loading) return <div className="min-h-screen bg-[#050505] text-[#D4AF37] flex items-center justify-center text-xl tracking-widest uppercase">Iniciando Búnker...</div>;
@@ -57,15 +79,28 @@ export default function SuperAdminPage() {
 
   return (
     <div className="flex h-screen bg-[#050505] text-gray-300 font-sans selection:bg-[#D4AF37] selection:text-black overflow-hidden">
-      <Sidebar seccionActiva={seccionActiva} setSeccionActiva={setSeccionActiva} onLogout={handleLogout} />
+      
+      <Toaster 
+        position="top-right" 
+        toastOptions={{
+          style: { background: '#111', color: '#fff', border: '1px solid #333' },
+          success: { iconTheme: { primary: '#D4AF37', secondary: '#000' } }
+        }} 
+      />
+
+      {/* Usamos handleSetSeccion en lugar de setSeccionActiva directo */}
+      <Sidebar seccionActiva={seccionActiva} setSeccionActiva={handleSetSeccion} onLogout={handleLogout} />
 
       <main className="flex-1 overflow-y-auto p-8 relative">
-        
-        {/* LE PASAMOS LA FUNCIÓN DE BÚSQUEDA AL HEADER */}
-        <Header title={titulos[seccionActiva]} onSearch={handleSearch} />
+        <Header 
+          title={titulos[seccionActiva]} 
+          onSearch={handleSearch} 
+          empresas={empresasList} 
+          onLogout={handleLogout} 
+        />
 
-        {seccionActiva === 'dashboard' && <DashboardView setSeccionActiva={setSeccionActiva} />}
-        
+        {/* Usamos handleSetSeccion también acá */}
+        {seccionActiva === 'dashboard' && <DashboardView setSeccionActiva={handleSetSeccion} />}
         {seccionActiva === 'clientes' && <ClientesView searchQuery={searchQuery} />}
         
         {seccionActiva !== 'dashboard' && seccionActiva !== 'clientes' && (
@@ -74,7 +109,7 @@ export default function SuperAdminPage() {
               <svg className="w-10 h-10 text-[#D4AF37]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
             </div>
             <h3 className="text-xl text-white font-light uppercase tracking-widest mb-2">Sección en construcción</h3>
-            <p className="text-gray-500 max-w-md">Estamos migrando las otras pestañas a componentes modulares.</p>
+            <p className="text-gray-500 max-w-md">Muy pronto podrás gestionar esto desde acá.</p>
           </div>
         )}
       </main>
