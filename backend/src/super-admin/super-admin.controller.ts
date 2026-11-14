@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Request, ForbiddenException, Patch, Param } from '@nestjs/common';
 import { SuperAdminService } from './super-admin.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -9,17 +9,25 @@ export class SuperAdminController {
 
   @Get('empresas')
   getEmpresas(@Request() req: any) {
-    if (req.user.rol !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('No tenés permisos de Super Admin');
-    }
+    if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');
     return this.superAdminService.getEmpresas();
   }
 
   @Post('empresas')
   crearEmpresa(@Body() data: any, @Request() req: any) {
-    if (req.user.rol !== 'SUPER_ADMIN') {
-      throw new ForbiddenException('No tenés permisos de Super Admin');
-    }
+    if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');
     return this.superAdminService.crearEmpresa(data);
+  }
+
+  @Patch('empresas/:id/toggle')
+  toggleEstado(@Param('id') id: string, @Request() req: any) {
+    if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');
+    return this.superAdminService.toggleEstado(id);
+  }
+
+  @Post('empresas/:id/impersonar')
+  impersonar(@Param('id') id: string, @Request() req: any) {
+    if (req.user.rol !== 'SUPER_ADMIN') throw new ForbiddenException('No autorizado');
+    return this.superAdminService.impersonarAdmin(id);
   }
 }

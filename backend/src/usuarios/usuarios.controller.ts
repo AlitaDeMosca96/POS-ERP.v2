@@ -5,19 +5,27 @@ import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
 @Controller('usuarios')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard) // Sigue comentado para el bootstrap
 export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Post()
   create(@Body() createUsuarioDto: CreateUsuarioDto, @Request() req: any) {
-    createUsuarioDto.empresaId = req.user.empresaId;
+    // Si hay un usuario logueado (guard activo), usamos su empresaId.
+    // Si no (bootstrap), usamos el empresaId que venga en el JSON.
+    if (req.user && req.user.empresaId) {
+      createUsuarioDto.empresaId = req.user.empresaId;
+    }
     return this.usuariosService.create(createUsuarioDto);
   }
 
   @Get()
   findAll(@Request() req: any) {
-    return this.usuariosService.findAll(req.user.empresaId);
+    // Si estamos en bootstrap, devolvemos todos (o lo que pida)
+    if (req.user && req.user.empresaId) {
+      return this.usuariosService.findAll(req.user.empresaId);
+    }
+    return this.usuariosService.findAll(''); 
   }
 
   @Get(':id')

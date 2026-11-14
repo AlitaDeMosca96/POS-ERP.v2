@@ -21,7 +21,8 @@ import { ReportesModule } from './reportes/reportes.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { ReservasModule } from './reservas/reservas.module';
 import { CampaniasModule } from './campanias/campanias.module';
-import { SuperAdminModule } from './super-admin/super-admin.module'; // <-- REGISTRADO
+import { SuperAdminModule } from './super-admin/super-admin.module';
+import { PlanesModule } from './planes/planes.module'; // <-- NUEVO
 
 @Module({
   imports: [
@@ -54,7 +55,8 @@ import { SuperAdminModule } from './super-admin/super-admin.module'; // <-- REGI
     ClientesModule,
     ReservasModule,
     CampaniasModule,
-    SuperAdminModule, // <-- REGISTRADO
+    SuperAdminModule,
+    PlanesModule, // <-- REGISTRADO
   ],
   controllers: [AppController],
   providers: [AppService],

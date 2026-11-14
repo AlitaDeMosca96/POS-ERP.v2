@@ -1,8 +1,10 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
+import { generateSecret as generateTotpSecret, generateURI, verify } from 'otplib';
+import * as qrcode from 'qrcode';
 
 @Injectable()
 export class AuthService {
@@ -15,6 +17,12 @@ export class AuthService {
     const usuario = await this.usuariosService.findByEmail(loginDto.email);
     if (!usuario) throw new UnauthorizedException('Credenciales incorrectas');
 
+    // --- NUEVA VALIDACIÓN: EMPRESA ACTIVA ---
+    if (usuario.empresa && !usuario.empresa.activa) {
+      throw new UnauthorizedException('La cuenta de su empresa se encuentra suspendida. Contacte a soporte.');
+    }
+    // ----------------------------------------
+
     const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
     if (!isPasswordValid) throw new UnauthorizedException('Credenciales incorrectas');
 
@@ -23,7 +31,7 @@ export class AuthService {
       email: usuario.email, 
       rol: usuario.rol, 
       empresaId: usuario.empresaId,
-      sucursalId: usuario.sucursalId // <-- AGREGAMOS LA SUCURSAL AL TOKEN
+      sucursalId: usuario.sucursalId
     };
     
     return {
@@ -34,8 +42,66 @@ export class AuthService {
         email: usuario.email,
         rol: usuario.rol,
         empresaId: usuario.empresaId,
-        sucursalId: usuario.sucursalId // <-- Y AL PERFIL DEL USUARIO
+        sucursalId: usuario.sucursalId
       }
     };
+  }
+
+  async masterLogin(loginDto: LoginDto) {
+    const usuario = await this.usuariosService.findByEmail(loginDto.email);
+    
+    if (!usuario || usuario.rol !== 'SUPER_ADMIN') {
+      throw new UnauthorizedException('Acceso denegado al sistema maestro');
+    }
+
+    const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
+    if (!isPasswordValid) throw new UnauthorizedException('Acceso denegado al sistema maestro');
+
+    if (usuario.twoFactorEnabled) {
+      if (!loginDto.twoFactorCode) {
+        throw new BadRequestException('Se requiere código 2FA');
+      }
+      const isValid = await verify({ token: loginDto.twoFactorCode, secret: usuario.twoFactorSecret });
+      if (!isValid) {
+        throw new UnauthorizedException('Código 2FA inválido');
+      }
+    }
+
+    const payload = { 
+      sub: usuario.id, 
+      email: usuario.email, 
+      rol: usuario.rol, 
+      empresaId: usuario.empresaId
+    };
+    
+    return {
+      access_token: this.jwtService.sign(payload),
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        email: usuario.email,
+        rol: usuario.rol,
+        empresaId: usuario.empresaId
+      }
+    };
+  }
+
+  async generate2FASecret(userId: string, email: string) {
+    const secret = generateTotpSecret();
+    await this.usuariosService.update(userId, { twoFactorSecret: secret, twoFactorEnabled: false } as any);
+    const otpauthUrl = generateURI({ issuer: 'MasterCtrl SaaS', label: email, secret });
+    const qrCodeDataUrl = await qrcode.toDataURL(otpauthUrl);
+    return { secret, qrCodeDataUrl };
+  }
+
+  async turnOn2FA(userId: string, code: string) {
+    const usuario = await this.usuariosService.findOne(userId);
+    if (!usuario || !usuario.twoFactorSecret) throw new BadRequestException('No hay secreto generado');
+
+    const isValid = await verify({ token: code, secret: usuario.twoFactorSecret });
+    if (!isValid) throw new UnauthorizedException('Código inválido. Intentá de nuevo.');
+
+    await this.usuariosService.update(userId, { twoFactorEnabled: true } as any);
+    return { success: true };
   }
 }

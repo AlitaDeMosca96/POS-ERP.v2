@@ -1,6 +1,6 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
-import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
+import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 
 @Entity('usuarios')
 export class Usuario {
@@ -17,7 +17,7 @@ export class Usuario {
   nombre: string;
 
   @Column({ type: 'varchar', length: 50, default: 'CAJERO' })
-  rol: string; // ADMIN, CAJERO, COCINERO
+  rol: string; 
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
@@ -26,7 +26,6 @@ export class Usuario {
   @Column('uuid')
   empresaId: string;
 
-  // RELACIÓN CON SUCURSAL
   @ManyToOne(() => Sucursal, { nullable: true })
   @JoinColumn({ name: 'sucursal_id' })
   sucursal: Sucursal;
@@ -36,6 +35,12 @@ export class Usuario {
 
   @Column({ type: 'boolean', default: true })
   activo: boolean;
+
+  @Column({ type: 'varchar', nullable: true })
+  twoFactorSecret: string;
+
+  @Column({ type: 'boolean', default: false })
+  twoFactorEnabled: boolean;
 
   @CreateDateColumn()
   createdAt: Date;
