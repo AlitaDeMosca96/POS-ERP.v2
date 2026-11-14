@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 
@@ -10,7 +10,6 @@ export class Usuario {
   @Column({ type: 'varchar', length: 255, unique: true })
   email: string;
 
-  // Oculto por defecto en las consultas
   @Column({ type: 'varchar', length: 255, select: false })
   password: string;
 
@@ -37,12 +36,14 @@ export class Usuario {
   @Column({ type: 'boolean', default: true })
   activo: boolean;
 
-  // Oculto por defecto en las consultas
   @Column({ type: 'varchar', nullable: true, select: false })
   twoFactorSecret: string;
 
   @Column({ type: 'boolean', default: false })
   twoFactorEnabled: boolean;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

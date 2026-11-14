@@ -53,7 +53,7 @@ export class ProductosService {
 
   async findOne(id: string, empresaId: string) {
     const producto = await this.productoRepository.findOne({ 
-      where: { id, empresaId }, // <-- VALIDACIÓN MULTI-TENANT
+      where: { id, empresaId },
       relations: { empresa: true, categoria: true }
     });
     if (!producto) throw new NotFoundException('Producto no encontrado o no pertenece a tu empresa');
@@ -61,12 +61,12 @@ export class ProductosService {
   }
 
   async update(id: string, updateProductoDto: UpdateProductoDto, empresaId: string) {
-    await this.findOne(id, empresaId); // Valida que exista y sea de la empresa
+    await this.findOne(id, empresaId);
     return this.productoRepository.update(id, updateProductoDto);
   }
 
   async remove(id: string, empresaId: string) {
     await this.findOne(id, empresaId);
-    return this.productoRepository.delete(id);
+    return this.productoRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

@@ -31,7 +31,7 @@ export default function ClientesPage() {
 
   const cargarClientes = async () => {
     try {
-      const res = await fetch('http://localhost:3000/clientes', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/clientes', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setClientes(data);
       setLoading(false);
@@ -44,7 +44,7 @@ export default function ClientesPage() {
   const handleCrearCliente = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/clientes', {
+      const res = await fetch('/api/clientes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, telefono, email })

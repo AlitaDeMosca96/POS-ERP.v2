@@ -52,7 +52,7 @@ export default function CajaPage() {
 
   const verificarCaja = async () => {
     try {
-      const res = await fetch('http://localhost:3000/cajas/abierta', {
+      const res = await fetch('/api/cajas/abierta', {
         headers: { Authorization: `Bearer ${token}` }
       });
       
@@ -76,7 +76,7 @@ export default function CajaPage() {
 
   const cargarResumen = async (cajaId: string) => {
     try {
-      const res = await fetch(`http://localhost:3000/cajas/${cajaId}/resumen`, {
+      const res = await fetch(`/api/cajas/${cajaId}/resumen`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {
@@ -92,7 +92,7 @@ export default function CajaPage() {
   const handleAbrirCaja = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/cajas/apertura', {
+      const res = await fetch('/api/cajas/apertura', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ 
@@ -123,7 +123,7 @@ export default function CajaPage() {
     if (!confirm(msj)) return;
 
     try {
-      const res = await fetch(`http://localhost:3000/cajas/${resumen.caja.id}/cierre`, {
+      const res = await fetch(`/api/cajas/${resumen.caja.id}/cierre`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ saldoFinal: Number(montoCierre) })
@@ -144,7 +144,7 @@ export default function CajaPage() {
     if (!resumen) return;
 
     try {
-      const res = await fetch('http://localhost:3000/cajas/movimientos', {
+      const res = await fetch('/api/cajas/movimientos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({

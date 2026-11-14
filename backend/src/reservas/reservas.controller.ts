@@ -21,17 +21,17 @@ export class ReservasController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.reservasService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.reservasService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateReservaDto: UpdateReservaDto) {
-    return this.reservasService.update(id, updateReservaDto);
+  update(@Param('id') id: string, @Body() updateReservaDto: UpdateReservaDto, @Request() req: any) {
+    return this.reservasService.update(id, updateReservaDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.reservasService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.reservasService.remove(id, req.user.empresaId);
   }
 }

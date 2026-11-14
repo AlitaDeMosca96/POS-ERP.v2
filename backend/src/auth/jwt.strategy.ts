@@ -2,14 +2,23 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { UsuariosService } from '../usuarios/usuarios.service';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
-  constructor(private readonly usuariosService: UsuariosService) {
+  constructor(
+    private readonly usuariosService: UsuariosService,
+    private readonly configService: ConfigService
+  ) {
+    const secret = configService.get<string>('JWT_SECRET');
+    if (!secret) {
+      throw new Error('FATAL ERROR: JWT_SECRET no está definido en el archivo .env');
+    }
+
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'mi_palabra_secreta_super_segura_123',
+      secretOrKey: secret,
     });
   }
 
@@ -20,7 +29,6 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('Token inválido o usuario inactivo');
     }
 
-    // Si la empresa fue suspendida, bloqueamos la petición inmediatamente (arregla el bug de las 8hs)
     if (usuario.empresa && !usuario.empresa.activa) {
       throw new UnauthorizedException('La cuenta de la empresa está suspendida');
     }
@@ -30,7 +38,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: payload.email, 
       rol: payload.rol, 
       empresaId: payload.empresaId,
-      sucursalId: payload.sucursalId // <-- AHORA SÍ DEVOLVEMOS LA SUCURSAL
+      sucursalId: payload.sucursalId 
     };
   }
 }

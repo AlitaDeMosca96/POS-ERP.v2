@@ -21,17 +21,17 @@ export class ProveedoresController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.proveedoresService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.proveedoresService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateProveedoreDto: UpdateProveedoreDto) {
-    return this.proveedoresService.update(id, updateProveedoreDto);
+  update(@Param('id') id: string, @Body() updateProveedoreDto: UpdateProveedoreDto, @Request() req: any) {
+    return this.proveedoresService.update(id, updateProveedoreDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.proveedoresService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.proveedoresService.remove(id, req.user.empresaId);
   }
 }

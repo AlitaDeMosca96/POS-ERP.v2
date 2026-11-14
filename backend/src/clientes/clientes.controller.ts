@@ -21,17 +21,17 @@ export class ClientesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.clientesService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.clientesService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto) {
-    return this.clientesService.update(id, updateClienteDto);
+  update(@Param('id') id: string, @Body() updateClienteDto: UpdateClienteDto, @Request() req: any) {
+    return this.clientesService.update(id, updateClienteDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.clientesService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.clientesService.remove(id, req.user.empresaId);
   }
 }

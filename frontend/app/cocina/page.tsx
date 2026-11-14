@@ -35,8 +35,8 @@ export default function CocinaPage() {
       try {
         // Agregamos el filtro de sucursal
         const url = sucursalActiva 
-          ? `http://localhost:3000/pedidos/cocina?sucursalId=${sucursalActiva}` 
-          : 'http://localhost:3000/pedidos/cocina';
+          ? `/api/pedidos/cocina?sucursalId=${sucursalActiva}` 
+          : '/api/pedidos/cocina';
 
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
@@ -58,7 +58,7 @@ export default function CocinaPage() {
 
   const handleMarcarListo = async (id: string) => {
     try {
-      await fetch(`http://localhost:3000/pedidos/${id}/cocina`, {
+      await fetch(`/api/pedidos/${id}/cocina`, {
         method: 'PATCH',
         headers: { Authorization: `Bearer ${token}` }
       });

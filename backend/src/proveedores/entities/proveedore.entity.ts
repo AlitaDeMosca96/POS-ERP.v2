@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 
 @Entity('proveedores')
@@ -24,6 +24,9 @@ export class Proveedore {
 
   @Column('uuid')
   empresaId: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

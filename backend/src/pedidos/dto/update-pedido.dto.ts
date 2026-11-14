@@ -1,6 +1,8 @@
-import { PartialType } from '@nestjs/mapped-types';
+import { PartialType, OmitType } from '@nestjs/mapped-types';
 import { CreatePedidoDto } from './create-pedido.dto';
 
-export class UpdatePedidoDto extends PartialType(CreatePedidoDto) {
-  estadoDelivery?: string; // <-- Agregamos esta propiedad
+export class UpdatePedidoDto extends PartialType(
+  OmitType(CreatePedidoDto, ['detalles'] as const)
+) {
+  estadoDelivery?: string;
 }

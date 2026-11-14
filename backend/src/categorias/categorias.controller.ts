@@ -21,17 +21,17 @@ export class CategoriasController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.categoriasService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.categoriasService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateCategoriaDto: UpdateCategoriaDto) {
-    return this.categoriasService.update(id, updateCategoriaDto);
+  update(@Param('id') id: string, @Body() updateCategoriaDto: UpdateCategoriaDto, @Request() req: any) {
+    return this.categoriasService.update(id, updateCategoriaDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.categoriasService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.categoriasService.remove(id, req.user.empresaId);
   }
 }

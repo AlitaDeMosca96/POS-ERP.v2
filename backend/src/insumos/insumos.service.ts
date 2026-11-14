@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateInsumoDto } from './dto/create-insumo.dto';
 import { UpdateInsumoDto } from './dto/update-insumo.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,21 +18,22 @@ export class InsumosService {
   }
 
   findAll(empresaId: string) {
-    return this.insumoRepository.find({ 
-      where: { empresaId },
-      order: { nombre: 'ASC' }
-    });
+    return this.insumoRepository.find({ where: { empresaId }, order: { nombre: 'ASC' } });
   }
 
-  findOne(id: string) {
-    return this.insumoRepository.findOneBy({ id });
+  async findOne(id: string, empresaId: string) {
+    const insumo = await this.insumoRepository.findOneBy({ id, empresaId });
+    if (!insumo) throw new NotFoundException('Insumo no encontrado');
+    return insumo;
   }
 
-  update(id: string, updateInsumoDto: UpdateInsumoDto) {
+  async update(id: string, updateInsumoDto: UpdateInsumoDto, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.insumoRepository.update(id, updateInsumoDto);
   }
 
-  remove(id: string) {
-    return this.insumoRepository.delete(id);
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
+    return this.insumoRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

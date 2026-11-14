@@ -13,11 +13,8 @@ export class CajasController {
   abrir(@Body() createCajaDto: CreateCajaDto, @Request() req: any) {
     createCajaDto.empresaId = req.user.empresaId;
     createCajaDto.usuarioId = req.user.id;
-    
     const targetSucursal = req.user.sucursalId || createCajaDto.sucursalId;
-    if (targetSucursal) {
-      createCajaDto.sucursalId = targetSucursal;
-    }
+    if (targetSucursal) createCajaDto.sucursalId = targetSucursal;
     return this.cajasService.abrir(createCajaDto);
   }
 
@@ -27,8 +24,8 @@ export class CajasController {
   }
 
   @Patch(':id/cierre')
-  cerrar(@Param('id') id: string, @Body('saldoFinal') saldoFinal: number) {
-    return this.cajasService.cerrar(id, saldoFinal);
+  cerrar(@Param('id') id: string, @Body('saldoFinal') saldoFinal: number, @Request() req: any) {
+    return this.cajasService.cerrar(id, saldoFinal, req.user.empresaId);
   }
 
   @Get()
@@ -38,8 +35,8 @@ export class CajasController {
   }
 
   @Post('movimientos')
-  registrarMovimiento(@Body() dto: CreateMovimientoDto) {
-    return this.cajasService.registrarMovimiento(dto);
+  registrarMovimiento(@Body() dto: CreateMovimientoDto, @Request() req: any) {
+    return this.cajasService.registrarMovimiento(dto, req.user.empresaId);
   }
 
   @Get(':id/resumen')

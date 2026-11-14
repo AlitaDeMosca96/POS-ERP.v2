@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -24,27 +24,23 @@ export class MesasService {
   }
 
   findAll(empresaId: string, sucursalId: string | null) {
-    // Si el usuario tiene sucursalId (es cajero/mozo), filtramos solo su local.
-    // Si es null (es admin), le mostramos todas las mesas de la empresa.
-    const query = sucursalId 
-      ? { empresaId, sucursalId } 
-      : { empresaId };
-
-    return this.mesaRepository.find({ 
-      where: query,
-      relations: { sucursal: true }
-    });
+    const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
+    return this.mesaRepository.find({ where: query, relations: { sucursal: true } });
   }
 
-  findOne(id: string) {
-    return this.mesaRepository.findOneBy({ id });
+  async findOne(id: string, empresaId: string) {
+    const mesa = await this.mesaRepository.findOne({ where: { id, empresaId } });
+    if (!mesa) throw new NotFoundException('Mesa no encontrada');
+    return mesa;
   }
 
-  update(id: string, updateMesaDto: UpdateMesaDto) {
+  async update(id: string, updateMesaDto: UpdateMesaDto, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.mesaRepository.update(id, updateMesaDto);
   }
 
-  remove(id: string) {
-    return this.mesaRepository.delete(id);
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
+    return this.mesaRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

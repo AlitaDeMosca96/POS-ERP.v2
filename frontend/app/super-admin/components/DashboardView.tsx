@@ -19,7 +19,7 @@ export default function DashboardView({ setSeccionActiva }: { setSeccionActiva: 
   const [loading, setLoading] = useState(true);
   const [lastUpdate, setLastUpdate] = useState(new Date());
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   const fetchMetrics = async () => {
     const token = localStorage.getItem('token');

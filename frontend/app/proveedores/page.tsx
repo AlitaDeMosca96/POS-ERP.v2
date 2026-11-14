@@ -33,7 +33,7 @@ export default function ProveedoresPage() {
 
   const cargarProveedores = async () => {
     try {
-      const res = await fetch('http://localhost:3000/proveedores', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/proveedores', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setProveedores(data);
       setLoading(false);
@@ -46,7 +46,7 @@ export default function ProveedoresPage() {
   const handleCrearProveedor = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/proveedores', {
+      const res = await fetch('/api/proveedores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, telefono, email, direccion })

@@ -1,7 +1,6 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
 import { CreateCajaDto } from './dto/create-caja.dto';
 import { CreateMovimientoDto } from './dto/create-movimiento.dto';
-import { UpdateCajaDto } from './dto/update-caja.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Caja } from './entities/caja.entity';
@@ -43,21 +42,31 @@ export class CajasService {
     });
   }
 
-  async cerrar(id: string, saldoFinal: number) {
-    const caja = await this.cajaRepository.findOneBy({ id });
-    if (!caja) throw new BadRequestException('Caja no encontrada');
+  async cerrar(id: string, saldoFinal: number, empresaId: string) {
+    const caja = await this.cajaRepository.findOneBy({ id, empresaId });
+    if (!caja) throw new NotFoundException('Caja no encontrada');
+    if (caja.estado === 'CERRADA') throw new BadRequestException('La caja ya está cerrada');
+
+    // Calculamos el saldo real esperado en el servidor
+    const resumen = await this.obtenerResumen(id);
+    const saldoEsperado = resumen.saldoEsperado;
 
     caja.estado = 'CERRADA';
-    caja.saldoFinal = saldoFinal;
+    caja.saldoFinal = saldoFinal; // Se guarda lo que el cajero contó físicamente
     caja.fechaCierre = new Date();
 
-    return this.cajaRepository.save(caja);
+    await this.cajaRepository.save(caja);
+
+    // Retornamos si hubo faltante o sobrante para que el frontend lo muestre
+    return {
+      caja,
+      saldoEsperado,
+      diferencia: saldoFinal - saldoEsperado
+    };
   }
 
   findAll(empresaId: string, sucursalId: string | null) {
-    // Si el usuario tiene sucursal, solo ve sus cajas. El admin ve todas.
     const query = sucursalId ? { empresaId, sucursalId } : { empresaId };
-    
     return this.cajaRepository.find({ 
       where: query,
       relations: { usuario: true, sucursal: true },
@@ -65,8 +74,10 @@ export class CajasService {
     });
   }
 
-  async registrarMovimiento(dto: CreateMovimientoDto) {
-    const caja = await this.cajaRepository.findOneBy({ id: dto.cajaId, estado: 'ABIERTA' });
+  async registrarMovimiento(dto: CreateMovimientoDto, empresaId: string) {
+    if (dto.monto <= 0) throw new BadRequestException('El monto debe ser mayor a 0');
+    
+    const caja = await this.cajaRepository.findOneBy({ id: dto.cajaId, empresaId, estado: 'ABIERTA' });
     if (!caja) throw new BadRequestException('La caja no está abierta o no existe');
 
     const movimiento = this.movimientoRepository.create(dto);
@@ -75,7 +86,7 @@ export class CajasService {
 
   async obtenerResumen(cajaId: string) {
     const caja = await this.cajaRepository.findOneBy({ id: cajaId });
-    if (!caja) throw new BadRequestException('Caja no encontrada');
+    if (!caja) throw new NotFoundException('Caja no encontrada');
 
     const movimientos = await this.movimientoRepository.find({ 
       where: { cajaId },
@@ -97,13 +108,6 @@ export class CajasService {
     const totalVentasEfectivo = ventasEfectivo.reduce((acc, pedido) => acc + Number(pedido.total), 0);
     const saldoEsperado = Number(caja.saldoInicial) + ingresos - sangrias + totalVentasEfectivo;
 
-    return {
-      caja,
-      movimientos,
-      ingresos,
-      sangrias,
-      totalVentasEfectivo,
-      saldoEsperado
-    };
+    return { caja, movimientos, ingresos, sangrias, totalVentasEfectivo, saldoEsperado };
   }
 }

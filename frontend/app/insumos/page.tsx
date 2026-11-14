@@ -34,7 +34,7 @@ export default function InsumosPage() {
 
   const cargarInsumos = async () => {
     try {
-      const res = await fetch('http://localhost:3000/insumos', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/insumos', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setInsumos(data);
       setLoading(false);
@@ -55,7 +55,7 @@ export default function InsumosPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:3000/insumos', {
+      const res = await fetch('/api/insumos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(nuevoInsumo)

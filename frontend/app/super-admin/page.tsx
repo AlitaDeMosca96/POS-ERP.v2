@@ -7,24 +7,21 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import DashboardView from './components/DashboardView';
 import ClientesView from './components/ClientesView';
-// ... import other views ...
 
 export default function SuperAdminPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  
-  // 1. Persistencia: Leemos del localStorage al iniciar
   const [seccionActiva, setSeccionActiva] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('sa_active_section') || 'dashboard';
     }
     return 'dashboard';
   });
-  
   const [searchQuery, setSearchQuery] = useState('');
   const [empresasList, setEmpresasList] = useState<{id: string, nombre: string}[]>([]);
   
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     if (!token) {
@@ -40,22 +37,34 @@ export default function SuperAdminPage() {
       }
     }
     
-    fetch('http://localhost:3000/super-admin/empresas', { headers: { Authorization: `Bearer ${token}` } })
-      .then(res => res.json())
+    fetch(`${apiUrl}/super-admin/empresas`, { headers: { Authorization: `Bearer ${token}` } })
+      .then(res => {
+        if (!res.ok) {
+          throw new Error('No autorizado o error del servidor');
+        }
+        return res.json();
+      })
       .then(data => {
-        setEmpresasList(data.map((e: any) => ({ id: e.id, nombre: e.nombre })));
+        // Validación para evitar el crash
+        if (Array.isArray(data)) {
+          setEmpresasList(data.map((e: any) => ({ id: e.id, nombre: e.nombre })));
+        }
         setLoading(false);
+      })
+      .catch(err => {
+        console.error('Error al cargar empresas:', err);
+        localStorage.clear();
+        router.push('/master-login');
       });
-  }, [router, token]);
+  }, [router, token, apiUrl]);
 
-  // 2. Función para cambiar de pestaña y guardarla
   const handleSetSeccion = (seccion: string) => {
     setSeccionActiva(seccion);
     localStorage.setItem('sa_active_section', seccion);
   };
 
   const handleLogout = () => {
-    localStorage.clear(); // Esto borra el token y la sección activa
+    localStorage.clear();
     router.push('/master-login');
   };
 
@@ -88,7 +97,6 @@ export default function SuperAdminPage() {
         }} 
       />
 
-      {/* Usamos handleSetSeccion en lugar de setSeccionActiva directo */}
       <Sidebar seccionActiva={seccionActiva} setSeccionActiva={handleSetSeccion} onLogout={handleLogout} />
 
       <main className="flex-1 overflow-y-auto p-8 relative">
@@ -99,7 +107,6 @@ export default function SuperAdminPage() {
           onLogout={handleLogout} 
         />
 
-        {/* Usamos handleSetSeccion también acá */}
         {seccionActiva === 'dashboard' && <DashboardView setSeccionActiva={handleSetSeccion} />}
         {seccionActiva === 'clientes' && <ClientesView searchQuery={searchQuery} />}
         

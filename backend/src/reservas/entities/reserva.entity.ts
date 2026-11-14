@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
 import { Cliente } from '../../clientes/entities/cliente.entity';
@@ -28,9 +28,18 @@ export class Reserva {
   @JoinColumn({ name: 'mesa_id' })
   mesa: Mesa;
 
+  @Column('uuid')
+  mesaId: string;
+
   @ManyToOne(() => Cliente, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'cliente_id' })
   cliente: Cliente;
+
+  @Column('uuid')
+  clienteId: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

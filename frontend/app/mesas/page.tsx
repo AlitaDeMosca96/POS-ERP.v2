@@ -51,7 +51,7 @@ export default function MesasPage() {
 
   const cargarMesas = async () => {
     try {
-      const res = await fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/mesas', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setMesas(data);
       setLoading(false);
@@ -65,7 +65,7 @@ export default function MesasPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch('http://localhost:3000/mesas', {
+      const res = await fetch('/api/mesas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, capacidad: Number(capacidad) })
@@ -92,7 +92,7 @@ export default function MesasPage() {
     setPedidoDetalle(null);
 
     try {
-      const res = await fetch(`http://localhost:3000/pedidos/mesa/${mesa.id}`, {
+      const res = await fetch(`/api/pedidos/mesa/${mesa.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       

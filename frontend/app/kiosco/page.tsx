@@ -14,11 +14,10 @@ export default function KioscoPage() {
   const [categoriaActiva, setCategoriaActiva] = useState<string>('ALL');
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [loading, setLoading] = useState(true);
-  
-  // Estado para la pantalla de éxito
   const [pedidoExitoso, setPedidoExitoso] = useState<string | null>(null);
 
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
 
   useEffect(() => {
     if (!token) {
@@ -29,8 +28,8 @@ export default function KioscoPage() {
     const cargarDatos = async () => {
       try {
         const [resProd, resCat] = await Promise.all([
-          fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } })
+          fetch(`${apiUrl}/productos`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${apiUrl}/categorias`, { headers: { Authorization: `Bearer ${token}` } })
         ]);
         setProductos(await resProd.json());
         setCategorias(await resCat.json());
@@ -42,7 +41,7 @@ export default function KioscoPage() {
     };
     
     cargarDatos();
-  }, [router, token]);
+  }, [router, token, apiUrl]);
 
   const agregarAlCarrito = (producto: Producto) => {
     setCarrito(prev => {
@@ -72,19 +71,17 @@ export default function KioscoPage() {
     if (carrito.length === 0) return;
 
     const pedidoData = {
-      total: calcularTotal(),
-      estado: 'PAGADO', // Lo asumimos pagado en el kiosco
-      metodoPago: 'TARJETA', // Simulamos pago con tarjeta
+      estado: 'ABIERTO', // <-- PENDIENTE DE PAGO
+      metodoPago: 'PENDIENTE', // <-- NO ASUME TARJETA
       mesaId: null,
       detalles: carrito.map(item => ({
         productoId: item.id,
-        cantidad: item.cantidad,
-        precioUnitario: item.precio
+        cantidad: item.cantidad
       }))
     };
 
     try {
-      const res = await fetch('http://localhost:3000/pedidos', {
+      const res = await fetch(`${apiUrl}/pedidos`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(pedidoData)
@@ -92,11 +89,8 @@ export default function KioscoPage() {
 
       if (res.ok) {
         const ventaData = await res.json();
-        // Mostramos el número de ticket corto (los primeros 4 caracteres del ID)
         setPedidoExitoso(ventaData.id.slice(0, 4).toUpperCase());
         setCarrito([]);
-        
-        // Después de 8 segundos, reseteamos la pantalla para el próximo cliente
         setTimeout(() => setPedidoExitoso(null), 8000);
       } else {
         alert('Error al procesar el pedido');
@@ -108,13 +102,12 @@ export default function KioscoPage() {
 
   if (loading) return <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center text-3xl font-bold">Cargando menú...</div>;
 
-  // PANTALLA DE ÉXITO (TICKET)
   if (pedidoExitoso) {
     return (
-      <div className="min-h-screen bg-green-600 flex flex-col items-center justify-center text-white p-8">
+      <div className="min-h-screen bg-yellow-500 flex flex-col items-center justify-center text-white p-8">
         <svg className="w-32 h-32 mb-8 animate-bounce" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-        <h1 className="text-5xl font-bold mb-4">¡Pedido Confirmado!</h1>
-        <p className="text-2xl mb-8">Por favor, retirá tu pedido cuando lo llamen.</p>
+        <h1 className="text-5xl font-bold mb-4">¡Pedido Registrado!</h1>
+        <p className="text-2xl mb-8">Por favor, pasá por caja a abonar.</p>
         <div className="bg-white text-gray-900 px-12 py-6 rounded-2xl shadow-2xl">
           <p className="text-xl text-center font-medium mb-2">TU NÚMERO DE ORDEN</p>
           <p className="text-8xl font-black text-center tracking-widest">{pedidoExitoso}</p>
@@ -123,50 +116,27 @@ export default function KioscoPage() {
     );
   }
 
-  const productosFiltrados = categoriaActiva === 'ALL' 
-    ? productos 
-    : productos.filter(p => p.categoriaId === categoriaActiva);
+  const productosFiltrados = categoriaActiva === 'ALL' ? productos : productos.filter(p => p.categoriaId === categoriaActiva);
 
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
-      
-      {/* COLUMNA IZQUIERDA: MENÚ (70%) */}
       <div className="w-2/3 flex flex-col">
-        
-        {/* HEADER KIOSCO */}
         <div className="bg-white p-6 shadow-sm flex justify-between items-center z-10">
           <h1 className="text-3xl font-black text-gray-800 tracking-tight">Bienvenido</h1>
           <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-400 hover:text-gray-700">Salir</button>
         </div>
 
-        {/* CATEGORÍAS */}
         <div className="p-6 pb-2 flex gap-3 overflow-x-auto bg-gray-50">
-          <button
-            onClick={() => setCategoriaActiva('ALL')}
-            className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === 'ALL' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}
-          >
-            Ver Todo
-          </button>
+          <button onClick={() => setCategoriaActiva('ALL')} className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === 'ALL' ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}>Ver Todo</button>
           {categorias.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setCategoriaActiva(cat.id)}
-              className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === cat.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}
-            >
-              {cat.nombre}
-            </button>
+            <button key={cat.id} onClick={() => setCategoriaActiva(cat.id)} className={`px-6 py-3 rounded-xl font-bold text-lg whitespace-nowrap transition ${categoriaActiva === cat.id ? 'bg-blue-600 text-white shadow-lg' : 'bg-white text-gray-600 shadow-sm hover:bg-gray-100'}`}>{cat.nombre}</button>
           ))}
         </div>
 
-        {/* PRODUCTOS */}
         <div className="flex-1 p-6 overflow-y-auto">
           <div className="grid grid-cols-2 lg:grid-cols-3 gap-6">
             {productosFiltrados.map(prod => (
-              <button 
-                key={prod.id}
-                onClick={() => agregarAlCarrito(prod)}
-                className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl transition border-2 border-transparent hover:border-blue-500 flex flex-col justify-between h-48 text-left group"
-              >
+              <button key={prod.id} onClick={() => agregarAlCarrito(prod)} className="bg-white p-6 rounded-2xl shadow-sm hover:shadow-xl transition border-2 border-transparent hover:border-blue-500 flex flex-col justify-between h-48 text-left group">
                 <span className="font-bold text-gray-800 text-2xl leading-tight group-hover:text-blue-600 transition">{prod.nombre}</span>
                 <span className="text-green-600 font-black text-3xl mt-4">${prod.precio}</span>
               </button>
@@ -175,7 +145,6 @@ export default function KioscoPage() {
         </div>
       </div>
 
-      {/* COLUMNA DERECHA: CARRITO (30%) */}
       <div className="w-1/3 bg-white shadow-2xl flex flex-col z-20 border-l border-gray-200">
         <div className="p-6 bg-gray-800 text-white">
           <h2 className="text-2xl font-bold">Tu Pedido</h2>
@@ -186,7 +155,6 @@ export default function KioscoPage() {
             <div className="flex flex-col items-center justify-center h-full text-gray-300">
               <svg className="w-24 h-24 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
               <p className="text-xl">El carrito está vacío</p>
-              <p className="text-sm">Tocá un producto para agregarlo</p>
             </div>
           ) : (
             carrito.map((item, index) => (
@@ -210,11 +178,7 @@ export default function KioscoPage() {
             <span>Total:</span>
             <span>${calcularTotal()}</span>
           </div>
-          <button 
-            onClick={confirmarPedido}
-            disabled={carrito.length === 0}
-            className="w-full bg-green-600 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-green-500 disabled:bg-gray-300 shadow-lg transition transform hover:scale-[1.02]"
-          >
+          <button onClick={confirmarPedido} disabled={carrito.length === 0} className="w-full bg-green-600 text-white py-6 rounded-2xl text-2xl font-bold hover:bg-green-500 disabled:bg-gray-300 shadow-lg transition transform hover:scale-[1.02]">
             Confirmar Pedido
           </button>
         </div>

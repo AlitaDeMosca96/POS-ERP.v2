@@ -31,7 +31,7 @@ export default function HistorialPage() {
       return;
     }
 
-    fetch('http://localhost:3000/pedidos', {
+    fetch('/api/pedidos', {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(res => res.json())

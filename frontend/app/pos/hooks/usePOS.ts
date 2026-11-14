@@ -10,7 +10,7 @@ export interface ItemCarrito extends Producto { cantidad: number; notas?: string
 
 export function usePOS() {
   const router = useRouter();
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
   const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
 

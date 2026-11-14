@@ -41,8 +41,8 @@ export default function EmpleadosPage() {
   const cargarDatos = async () => {
     try {
       const [resEmp, resSuc] = await Promise.all([
-        fetch('http://localhost:3000/usuarios', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/usuarios', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/sucursales', { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setEmpleados(await resEmp.json());
       const sucs = await resSuc.json();
@@ -58,7 +58,7 @@ export default function EmpleadosPage() {
   const handleCrearEmpleado = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/usuarios', {
+      const res = await fetch('/api/usuarios', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, email, password, rol, sucursalId: sucursalId || null })

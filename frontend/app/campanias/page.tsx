@@ -32,7 +32,7 @@ export default function CampaniasPage() {
 
   const cargarCampanias = async () => {
     try {
-      const res = await fetch('http://localhost:3000/campanias', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/campanias', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setCampanias(data);
       setLoading(false);
@@ -47,7 +47,7 @@ export default function CampaniasPage() {
     setEnviando(true);
 
     try {
-      const res = await fetch('http://localhost:3000/campanias', {
+      const res = await fetch('/api/campanias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ asunto, mensaje })

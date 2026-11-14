@@ -21,17 +21,17 @@ export class InsumosController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.insumosService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.insumosService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateInsumoDto: UpdateInsumoDto) {
-    return this.insumosService.update(id, updateInsumoDto);
+  update(@Param('id') id: string, @Body() updateInsumoDto: UpdateInsumoDto, @Request() req: any) {
+    return this.insumosService.update(id, updateInsumoDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.insumosService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.insumosService.remove(id, req.user.empresaId);
   }
 }

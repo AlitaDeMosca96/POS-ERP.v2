@@ -44,7 +44,7 @@ export default function DashboardPage() {
     setUsuario(user);
 
     if (user.rol === 'ADMIN' || user.rol === 'SUPER_ADMIN') {
-      fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } })
+      fetch('/api/sucursales', { headers: { Authorization: `Bearer ${token}` } })
         .then(res => res.json())
         .then(data => setSucursales(data));
     }
@@ -58,8 +58,8 @@ export default function DashboardPage() {
   const cargarReportes = (sucursalId: string) => {
     setLoading(true);
     const url = sucursalId 
-      ? `http://localhost:3000/reportes/resumen?sucursalId=${sucursalId}` 
-      : 'http://localhost:3000/reportes/resumen';
+      ? `/api/reportes/resumen?sucursalId=${sucursalId}` 
+      : '/api/reportes/resumen';
 
     fetch(url, {
       headers: { Authorization: `Bearer ${token}` }

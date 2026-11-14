@@ -1,6 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
-import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
+import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 
 @Entity('mesas')
 export class Mesa {
@@ -23,13 +23,15 @@ export class Mesa {
   @Column('uuid')
   empresaId: string;
 
-  // RELACIÓN CON SUCURSAL
   @ManyToOne(() => Sucursal, { nullable: true })
   @JoinColumn({ name: 'sucursal_id' })
   sucursal: Sucursal;
 
   @Column('uuid', { nullable: true })
   sucursalId: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

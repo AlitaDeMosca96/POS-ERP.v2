@@ -37,8 +37,8 @@ export default function DeliveryPage() {
     const cargarPedidos = async () => {
       try {
         const url = sucursalActiva 
-          ? `http://localhost:3000/pedidos/delivery?sucursalId=${sucursalActiva}` 
-          : 'http://localhost:3000/pedidos/delivery';
+          ? `/api/pedidos/delivery?sucursalId=${sucursalActiva}` 
+          : '/api/pedidos/delivery';
 
         const res = await fetch(url, {
           headers: { Authorization: `Bearer ${token}` }
@@ -63,7 +63,7 @@ export default function DeliveryPage() {
     if (!confirm('¿Despachar este pedido a la dirección indicada?')) return;
     
     try {
-      await fetch(`http://localhost:3000/pedidos/${id}/delivery`, {
+      await fetch(`/api/pedidos/${id}/delivery`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estadoDelivery: 'ENVIADO' })

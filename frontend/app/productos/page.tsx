@@ -74,9 +74,9 @@ export default function ProductosPage() {
   const cargarDatos = async () => {
     try {
       const [resProd, resCat, resIns] = await Promise.all([
-        fetch('http://localhost:3000/productos', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/categorias', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/insumos', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/productos', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/categorias', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/insumos', { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setProductos(await resProd.json());
       const cats = await resCat.json();
@@ -95,7 +95,7 @@ export default function ProductosPage() {
     if (!nombreCat) return;
 
     try {
-      const res = await fetch('http://localhost:3000/categorias', {
+      const res = await fetch('/api/categorias', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre: nombreCat })
@@ -118,7 +118,7 @@ export default function ProductosPage() {
     };
 
     try {
-      const res = await fetch('http://localhost:3000/productos', {
+      const res = await fetch('/api/productos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify(nuevoProducto)
@@ -140,7 +140,7 @@ export default function ProductosPage() {
   const abrirModalReceta = async (prod: Producto) => {
     setProductoReceta(prod);
     try {
-      const res = await fetch(`http://localhost:3000/recetas/producto/${prod.id}`, {
+      const res = await fetch(`/api/recetas/producto/${prod.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setRecetaActual(await res.json());
@@ -154,7 +154,7 @@ export default function ProductosPage() {
     if (!productoReceta || !nuevoInsumoId) return;
 
     try {
-      const res = await fetch('http://localhost:3000/recetas', {
+      const res = await fetch('/api/recetas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -165,7 +165,7 @@ export default function ProductosPage() {
       });
 
       if (res.ok) {
-        const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
+        const resRec = await fetch(`/api/recetas/producto/${productoReceta.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRecetaActual(await resRec.json());
@@ -179,12 +179,12 @@ export default function ProductosPage() {
   const handleEliminarInsumo = async (recetaId: string) => {
     if (!confirm('¿Quitar este insumo de la receta?')) return;
     try {
-      await fetch(`http://localhost:3000/recetas/${recetaId}`, {
+      await fetch(`/api/recetas/${recetaId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (productoReceta) {
-        const resRec = await fetch(`http://localhost:3000/recetas/producto/${productoReceta.id}`, {
+        const resRec = await fetch(`/api/recetas/producto/${productoReceta.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setRecetaActual(await resRec.json());
@@ -198,7 +198,7 @@ export default function ProductosPage() {
   const abrirModalModificadores = async (prod: Producto) => {
     setProductoModificador(prod);
     try {
-      const res = await fetch(`http://localhost:3000/modificadores/producto/${prod.id}`, {
+      const res = await fetch(`/api/modificadores/producto/${prod.id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setModificadoresActuales(await res.json());
@@ -212,7 +212,7 @@ export default function ProductosPage() {
     if (!productoModificador || !nuevoModNombre) return;
 
     try {
-      const res = await fetch('http://localhost:3000/modificadores', {
+      const res = await fetch('/api/modificadores', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -223,7 +223,7 @@ export default function ProductosPage() {
       });
 
       if (res.ok) {
-        const resMods = await fetch(`http://localhost:3000/modificadores/producto/${productoModificador.id}`, {
+        const resMods = await fetch(`/api/modificadores/producto/${productoModificador.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setModificadoresActuales(await resMods.json());
@@ -238,12 +238,12 @@ export default function ProductosPage() {
   const handleEliminarModificador = async (modId: string) => {
     if (!confirm('¿Eliminar este modificador?')) return;
     try {
-      await fetch(`http://localhost:3000/modificadores/${modId}`, {
+      await fetch(`/api/modificadores/${modId}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` }
       });
       if (productoModificador) {
-        const resMods = await fetch(`http://localhost:3000/modificadores/producto/${productoModificador.id}`, {
+        const resMods = await fetch(`/api/modificadores/producto/${productoModificador.id}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         setModificadoresActuales(await resMods.json());

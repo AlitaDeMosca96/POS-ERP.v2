@@ -23,7 +23,7 @@ export default function MasterLoginPage() {
         body.twoFactorCode = twoFactorCode;
       }
 
-      const response = await fetch('http://localhost:3000/auth/master-login', {
+      const response = await fetch('/api/auth/master-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

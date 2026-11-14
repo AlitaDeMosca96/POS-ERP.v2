@@ -43,7 +43,6 @@ export class UsuariosService {
     });
   }
 
-  // EXCEPCIÓN PARA EL LOGIN: Traemos la contraseña y el 2FA explícitamente
   async findByEmail(email: string) {
     return this.usuarioRepository.createQueryBuilder('usuario')
       .addSelect('usuario.password')
@@ -55,7 +54,6 @@ export class UsuariosService {
   }
 
   async update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
-    // Si el DTO trae una contraseña, la encriptamos antes de guardar
     if (updateUsuarioDto.password) {
       const salt = await bcrypt.genSalt(10);
       updateUsuarioDto.password = await bcrypt.hash(updateUsuarioDto.password, salt);
@@ -63,7 +61,7 @@ export class UsuariosService {
     return this.usuarioRepository.update(id, updateUsuarioDto);
   }
 
-  remove(id: string) {
-    return this.usuarioRepository.delete(id);
+  async remove(id: string) {
+    return this.usuarioRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

@@ -40,9 +40,9 @@ export default function ReservasPage() {
   const cargarDatos = async () => {
     try {
       const [resRes, resCli, resMes] = await Promise.all([
-        fetch('http://localhost:3000/reservas', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/clientes', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/mesas', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/reservas', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/clientes', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/mesas', { headers: { Authorization: `Bearer ${token}` } })
       ]);
       setReservas(await resRes.json());
       const clis = await resCli.json();
@@ -68,7 +68,7 @@ export default function ReservasPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/reservas', {
+      const res = await fetch('/api/reservas', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -95,7 +95,7 @@ export default function ReservasPage() {
   const handleCancelarReserva = async (id: string) => {
     if (!confirm('¿Estás seguro de cancelar esta reserva?')) return;
     try {
-      const res = await fetch(`http://localhost:3000/reservas/${id}`, {
+      const res = await fetch(`/api/reservas/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ estado: 'CANCELADA' })

@@ -16,7 +16,7 @@ export default function ClientesView({ searchQuery = '' }: { searchQuery?: strin
   const [filtroEstado, setFiltroEstado] = useState('TODOS');
   const [modalAbierto, setModalAbierto] = useState(false);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000';
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
 
   useEffect(() => { cargarDatos(); }, []);

@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateReservaDto } from './dto/create-reserva.dto';
 import { UpdateReservaDto } from './dto/update-reserva.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -31,18 +31,22 @@ export class ReservasService {
     });
   }
 
-  findOne(id: string) {
-    return this.reservaRepository.findOne({
-      where: { id },
+  async findOne(id: string, empresaId: string) {
+    const reserva = await this.reservaRepository.findOne({ 
+      where: { id, empresaId },
       relations: { mesa: true, cliente: true }
     });
+    if (!reserva) throw new NotFoundException('Reserva no encontrada');
+    return reserva;
   }
 
-  update(id: string, updateReservaDto: UpdateReservaDto) {
+  async update(id: string, updateReservaDto: UpdateReservaDto, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.reservaRepository.update(id, updateReservaDto);
   }
 
-  remove(id: string) {
-    return this.reservaRepository.delete(id);
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
+    return this.reservaRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

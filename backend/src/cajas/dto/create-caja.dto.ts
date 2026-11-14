@@ -1,6 +1,18 @@
+import { IsNumber, IsOptional, IsUUID, Min } from 'class-validator';
+
 export class CreateCajaDto {
+  @IsNumber()
+  @Min(0)
   saldoInicial: number;
+
+  @IsUUID()
   usuarioId: string;
-  empresaId: string;
-  sucursalId?: string; // <-- NUEVO
+
+  @IsUUID()
+  @IsOptional()
+  empresaId?: string;
+
+  @IsUUID()
+  @IsOptional()
+  sucursalId?: string;
 }

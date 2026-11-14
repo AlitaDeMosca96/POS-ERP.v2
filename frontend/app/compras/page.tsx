@@ -50,8 +50,8 @@ export default function ComprasPage() {
   const cargarDatos = async () => {
     try {
       const [resProv, resIns] = await Promise.all([
-        fetch('http://localhost:3000/proveedores', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('http://localhost:3000/insumos', { headers: { Authorization: `Bearer ${token}` } })
+        fetch('/api/proveedores', { headers: { Authorization: `Bearer ${token}` } }),
+        fetch('/api/insumos', { headers: { Authorization: `Bearer ${token}` } })
       ]);
       const provs = await resProv.json();
       const inss = await resIns.json();
@@ -123,7 +123,7 @@ export default function ComprasPage() {
     }
 
     try {
-      const res = await fetch('http://localhost:3000/compras', {
+      const res = await fetch('/api/compras', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({
@@ -141,7 +141,7 @@ export default function ComprasPage() {
         alert('¡Compra registrada con éxito! El stock de los insumos fue actualizado.');
         setCarrito([]);
         // Recargamos los insumos para ver el nuevo stock (opcional, pero buena práctica)
-        const resIns = await fetch('http://localhost:3000/insumos', { headers: { Authorization: `Bearer ${token}` } });
+        const resIns = await fetch('/api/insumos', { headers: { Authorization: `Bearer ${token}` } });
         setInsumos(await resIns.json());
       } else {
         alert('Error al registrar la compra.');

@@ -29,7 +29,7 @@ export default function SucursalesPage() {
 
   const cargarSucursales = async () => {
     try {
-      const res = await fetch('http://localhost:3000/sucursales', { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch('/api/sucursales', { headers: { Authorization: `Bearer ${token}` } });
       const data = await res.json();
       setSucursales(data);
       setLoading(false);
@@ -42,7 +42,7 @@ export default function SucursalesPage() {
   const handleCrearSucursal = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('http://localhost:3000/sucursales', {
+      const res = await fetch('/api/sucursales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, direccion })

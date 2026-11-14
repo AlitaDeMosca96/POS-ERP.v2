@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateProveedoreDto } from './dto/create-proveedore.dto';
 import { UpdateProveedoreDto } from './dto/update-proveedore.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -18,21 +18,22 @@ export class ProveedoresService {
   }
 
   findAll(empresaId: string) {
-    return this.proveedorRepository.find({ 
-      where: { empresaId },
-      order: { nombre: 'ASC' }
-    });
+    return this.proveedorRepository.find({ where: { empresaId }, order: { nombre: 'ASC' } });
   }
 
-  findOne(id: string) {
-    return this.proveedorRepository.findOneBy({ id });
+  async findOne(id: string, empresaId: string) {
+    const prov = await this.proveedorRepository.findOneBy({ id, empresaId });
+    if (!prov) throw new NotFoundException('Proveedor no encontrado');
+    return prov;
   }
 
-  update(id: string, updateProveedoreDto: UpdateProveedoreDto) {
+  async update(id: string, updateProveedoreDto: UpdateProveedoreDto, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.proveedorRepository.update(id, updateProveedoreDto);
   }
 
-  remove(id: string) {
-    return this.proveedorRepository.delete(id);
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
+    return this.proveedorRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

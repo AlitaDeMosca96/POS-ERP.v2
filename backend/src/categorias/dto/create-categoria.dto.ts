@@ -1,4 +1,11 @@
+import { IsNotEmpty, IsOptional, IsString, IsUUID } from 'class-validator';
+
 export class CreateCategoriaDto {
+  @IsString()
+  @IsNotEmpty()
   nombre: string;
-  empresaId: string;
+
+  @IsUUID()
+  @IsOptional()
+  empresaId?: string;
 }
