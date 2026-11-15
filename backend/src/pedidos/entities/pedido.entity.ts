@@ -47,6 +47,16 @@ export class Pedido {
   @Column({ type: 'varchar', nullable: true })
   caeSimulado: string | null;
 
+  // CAMPOS PARA AUDITORÍA DE ANULACIÓN
+  @Column({ type: 'varchar', nullable: true })
+  motivoAnulacion: string | null;
+
+  @Column({ type: 'uuid', nullable: true })
+  usuarioAnulacionId: string | null;
+
+  @Column({ type: 'timestamp', nullable: true })
+  fechaAnulacion: Date | null;
+
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
   empresa: Empresa;

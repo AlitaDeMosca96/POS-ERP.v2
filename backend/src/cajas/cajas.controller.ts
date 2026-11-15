@@ -1,36 +1,46 @@
-import { Controller, Get, Post, Body, Patch, Param, Req, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { CajasService } from './cajas.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-
-export class AbrirCajaDto {
-  montoInicial: number;
-  sucursalId?: string;
-}
-
-export class CerrarCajaDto {
-  saldoFinal: number;
-}
+import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
+import { AbrirCajaDto } from './dto/abrir-caja.dto';
+import { CerrarCajaDto } from './dto/cerrar-caja.dto';
+import { CreateMovimientoDto } from './dto/create-movimiento.dto';
 
 @Controller('cajas')
-@UseGuards(JwtAuthGuard) // <-- ESTO EVITA EL ERROR 500
+@UseGuards(JwtAuthGuard)
 export class CajasController {
   constructor(private readonly cajasService: CajasService) {}
 
   @Get('actual')
-  async obtenerCajaActual(@Req() req: any, @Query('sucursalId') sucursalId: string) {
-    const sucursal = sucursalId || req.user.sucursalId;
-    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, sucursal);
+  async obtenerCajaActual(@Req() req: RequestWithUser) {
+    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, req.user.sucursalId);
     return caja || null; 
   }
 
+  @Get('resumen')
+  async obtenerResumen(@Req() req: RequestWithUser) {
+    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, req.user.sucursalId);
+    if (!caja) throw new NotFoundException('No hay caja abierta');
+    return this.cajasService.obtenerResumen(caja.id, req.user.empresaId);
+  }
+
   @Post('abrir')
-  abrirCaja(@Body() dto: AbrirCajaDto, @Req() req: any) {
+  abrirCaja(@Body() dto: AbrirCajaDto, @Req() req: RequestWithUser) {
     const sucursal = dto.sucursalId || req.user.sucursalId;
     return this.cajasService.abrir(req.user.empresaId, sucursal, req.user.id, dto.montoInicial);
   }
 
-  @Patch(':id/cerrar')
-  cerrarCaja(@Param('id') id: string, @Body() dto: CerrarCajaDto, @Req() req: any) {
-    return this.cajasService.cerrar(id, req.user.empresaId, dto.saldoFinal, req.user.id);
+  @Post('movimientos')
+  async registrarMovimiento(@Body() dto: CreateMovimientoDto, @Req() req: RequestWithUser) {
+    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, req.user.sucursalId);
+    if (!caja) throw new NotFoundException('No hay caja abierta');
+    return this.cajasService.registrarMovimiento(caja.id, req.user.empresaId, dto.tipo, dto.monto, dto.motivo, req.user.id);
+  }
+
+  @Patch('cerrar')
+  async cerrarCaja(@Body() dto: CerrarCajaDto, @Req() req: RequestWithUser) {
+    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, req.user.sucursalId);
+    if (!caja) throw new NotFoundException('No hay caja abierta');
+    return this.cajasService.cerrar(caja.id, req.user.empresaId, dto.saldoFinal, req.user.id);
   }
 }

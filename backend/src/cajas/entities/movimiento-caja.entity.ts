@@ -7,13 +7,13 @@ export class MovimientoCaja {
   id: string;
 
   @Column({ type: 'varchar', length: 50 })
-  tipo: string; // INGRESO, SANGRIA (Retiro)
+  tipo: string; // INGRESO, EGRESO (Sangría)
 
   @Column({ type: 'decimal', precision: 10, scale: 2 })
   monto: number;
 
   @Column({ type: 'varchar', length: 255 })
-  motivo: string; // Ej: "Pago a proveedor de carne", "Cambio"
+  motivo: string;
 
   @ManyToOne(() => Caja, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'caja_id' })

@@ -1,5 +1,5 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Min, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Min, ValidateNested, IsIn, Matches } from 'class-validator';
 
 export class CreatePedidoDetalleDto {
   @IsUUID()
@@ -42,14 +42,17 @@ export class CreatePedidoDto {
 
   @IsString()
   @IsOptional()
+  @IsIn(['ABIERTO', 'PAGADO', 'ANULADO'], { message: 'Estado inválido' })
   estado?: string;
 
   @IsString()
   @IsOptional()
+  @IsIn(['PENDIENTE', 'EN_PREPARACION', 'LISTO', 'ENTREGADO'], { message: 'Estado de cocina inválido' })
   estadoCocina?: string;
 
   @IsString()
   @IsOptional()
+  @IsIn(['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'MERCADO_PAGO'], { message: 'Método de pago inválido' })
   metodoPago?: string;
 
   @IsString()
@@ -57,16 +60,18 @@ export class CreatePedidoDto {
   direccionEntrega?: string;
 
   @IsNumber()
+  @Min(0, { message: 'El costo de envío no puede ser negativo' })
   @IsOptional()
   costoEnvio?: number;
 
   @IsString()
   @IsOptional()
+  @IsIn(['FACTURA_A', 'FACTURA_B', 'FACTURA_C', 'TICKET'], { message: 'Tipo de factura inválido' })
   tipoFactura?: string;
 
   @IsString()
   @IsOptional()
-  @Length(11, 11, { message: 'El CUIT debe tener exactamente 11 dígitos' })
+  @Matches(/^\d{11}$/, { message: 'El CUIT debe tener exactamente 11 dígitos numéricos sin guiones' })
   cuitFactura?: string;
 
   @IsString()

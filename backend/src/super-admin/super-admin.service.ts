@@ -6,8 +6,8 @@ import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
 import { MetricsService } from './metrics.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
-import { Rol } from '../usuarios/enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
+import { Rol } from '../usuarios/enums/rol.enum';
+import * as bcrypt from 'bcryptjs';
 
 @Injectable()
 export class SuperAdminService {
@@ -68,7 +68,7 @@ export class SuperAdminService {
       email: data.adminEmail,
       password: hashedPassword, 
       nombre: data.adminNombre,
-      rol: Rol.ADMIN, // <-- USAMOS EL ENUM
+      rol: Rol.ADMIN,
       empresaId: empresa.id
     });
     await this.usuarioRepository.save(admin);
@@ -94,7 +94,7 @@ export class SuperAdminService {
 
   async impersonarAdmin(empresaId: string, adminEmail: string) {
     const admin = await this.usuarioRepository.findOne({ 
-      where: { empresaId, rol: Rol.ADMIN }, // <-- USAMOS EL ENUM
+      where: { empresaId, rol: Rol.ADMIN },
       relations: { empresa: true }
     });
 
@@ -103,7 +103,12 @@ export class SuperAdminService {
     await this.metricsService.registrarLog(`Super Admin ingresó como soporte a: ${admin.empresa.nombre}`, 'warning', adminEmail);
 
     const payload = { 
-      sub: admin.id, email: admin.email, rol: admin.rol, empresaId: admin.empresaId, sucursalId: admin.sucursalId
+      sub: admin.id, 
+      email: admin.email, 
+      rol: admin.rol, 
+      empresaId: admin.empresaId, 
+      sucursalId: admin.sucursalId,
+      isImpersonation: true
     };
     
     return {

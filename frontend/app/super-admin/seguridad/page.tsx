@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { fetcher } from '../../../lib/api';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { verificarSesion } from '../../../lib/auth';
 
 export default function SeguridadPage() {
   const [qrCode, setQrCode] = useState('');
@@ -16,11 +17,8 @@ export default function SeguridadPage() {
   const router = useRouter();
 
   useEffect(() => {
-    // Validar que estemos logueados
-    const token = localStorage.getItem('token');
-    if (!token) {
-      router.push('/master-login');
-    }
+    const user = verificarSesion('SUPER_ADMIN');
+    if (!user) return;
   }, [router]);
 
   const generate2FA = async () => {

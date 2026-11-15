@@ -43,6 +43,13 @@ export class Usuario {
   @Column({ type: 'boolean', default: false })
   twoFactorEnabled: boolean;
 
+  // CAMPOS PARA BLOQUEO DE CUENTA
+  @Column({ type: 'int', default: 0 })
+  intentosFallidos: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  bloqueadoHasta: Date | null;
+
   @DeleteDateColumn()
   deletedAt: Date;
 

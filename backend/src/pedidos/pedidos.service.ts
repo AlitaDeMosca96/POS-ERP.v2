@@ -3,6 +3,7 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, In } from 'typeorm';
+import Decimal from 'decimal.js'; // <-- NUEVO
 import { Pedido } from './entities/pedido.entity';
 import { Producto } from '../productos/entities/producto.entity';
 import { Mesa } from '../mesas/entities/mesa.entity';
@@ -10,6 +11,7 @@ import { Caja } from '../cajas/entities/caja.entity';
 import { Receta } from '../recetas/entities/receta.entity';
 import { Insumo } from '../insumos/entities/insumo.entity';
 import { Modificadore } from '../modificadores/entities/modificadore.entity';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 
 @Injectable()
 export class PedidosService {
@@ -26,7 +28,8 @@ export class PedidosService {
     private readonly recetaRepository: Repository<Receta>,
     @InjectRepository(Insumo)
     private readonly insumoRepository: Repository<Insumo>,
-    private readonly dataSource: DataSource
+    private readonly dataSource: DataSource,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   async create(createPedidoDto: CreatePedidoDto, usuarioId: string, empresaId: string) {
@@ -35,10 +38,9 @@ export class PedidosService {
     await queryRunner.startTransaction();
 
     try {
-      let totalCalculado = 0;
+      let totalCalculado = new Decimal(0); // <-- USAMOS DECIMAL
       const detallesFinales = [];
 
-      // 1. Validar productos y calcular total
       for (const det of createPedidoDto.detalles) {
         const producto = await queryRunner.manager.findOne(Producto, {
           where: { id: det.productoId, empresaId }
@@ -46,10 +48,9 @@ export class PedidosService {
 
         if (!producto) throw new BadRequestException(`Producto ${det.productoId} no encontrado`);
         
-        let precioReal = Number(producto.precio);
+        let precioReal = new Decimal(producto.precio); // <-- USAMOS DECIMAL
         let notasFinales = det.notas || '';
 
-        // Validación y cálculo de modificadores
         if (det.modificadoresIds && det.modificadoresIds.length > 0) {
           const modificadores = await queryRunner.manager.find(Modificadore, {
             where: { id: In(det.modificadoresIds), productoId: producto.id }
@@ -60,22 +61,25 @@ export class PedidosService {
           }
 
           for (const mod of modificadores) {
-            precioReal += Number(mod.precioExtra);
+            precioReal = precioReal.plus(mod.precioExtra); // <-- SUMA DECIMAL
             notasFinales += ` | + ${mod.nombre}`;
           }
         }
 
-        totalCalculado += precioReal * det.cantidad;
+        // Sumar al total: cantidad * precio
+        totalCalculado = totalCalculado.plus(precioReal.times(det.cantidad));
 
         detallesFinales.push({
           cantidad: det.cantidad,
-          precioUnitario: precioReal,
+          precioUnitario: precioReal.toNumber(), // Guardamos como número en el detalle
           notas: notasFinales.trim(),
           producto: { id: producto.id }
         });
       }
 
-      if (createPedidoDto.costoEnvio) totalCalculado += Number(createPedidoDto.costoEnvio);
+      if (createPedidoDto.costoEnvio) {
+        totalCalculado = totalCalculado.plus(createPedidoDto.costoEnvio);
+      }
 
       let numeroComprobante: string | undefined = undefined;
       let caeSimulado: string | undefined = undefined;
@@ -84,14 +88,27 @@ export class PedidosService {
         if (!createPedidoDto.cuitFactura || createPedidoDto.cuitFactura.length !== 11) {
           throw new BadRequestException('CUIT inválido para facturación');
         }
-        numeroComprobante = `FAC-${Date.now().toString().slice(-8)}`;
-        caeSimulado = `CAE-${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+        
+        const ultimoPedido = await queryRunner.manager.findOne(Pedido, {
+          where: { empresaId, tipoFactura: createPedidoDto.tipoFactura },
+          order: { createdAt: 'DESC' }
+        });
+
+        let secuencial = 1;
+        if (ultimoPedido && ultimoPedido.numeroComprobante) {
+           const partes = ultimoPedido.numeroComprobante.split('-');
+           if (partes.length === 3) secuencial = parseInt(partes[2]) + 1;
+        }
+        
+        const ptoVenta = '0001';
+        const numeroStr = secuencial.toString().padStart(8, '0');
+        numeroComprobante = `PV-${ptoVenta}-${numeroStr}`;
+        caeSimulado = `CAE-${Date.now().toString().slice(-10)}`; 
       }
 
       let pedidoGuardado;
 
       if (createPedidoDto.pedidoId) {
-        // --- ACTUALIZAR PEDIDO EXISTENTE ---
         const pedidoExistente = await queryRunner.manager.findOne(Pedido, {
           where: { id: createPedidoDto.pedidoId, empresaId },
           relations: { detalles: { producto: true } }
@@ -99,7 +116,6 @@ export class PedidosService {
 
         if (!pedidoExistente) throw new BadRequestException('Pedido original no encontrado');
 
-        // Devolver stock del pedido original
         for (const det of pedidoExistente.detalles) {
           const recetaVieja = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
@@ -115,7 +131,7 @@ export class PedidosService {
 
         await queryRunner.manager.delete('PedidoDetalle', { pedidoId: pedidoExistente.id });
         
-        pedidoExistente.total = totalCalculado;
+        pedidoExistente.total = totalCalculado.toNumber(); // <-- ASIGNAMOS COMO NUMBER
         pedidoExistente.estado = createPedidoDto.estado || pedidoExistente.estado;
         pedidoExistente.metodoPago = createPedidoDto.metodoPago || pedidoExistente.metodoPago;
         pedidoExistente.tipoFactura = createPedidoDto.tipoFactura || pedidoExistente.tipoFactura;
@@ -124,20 +140,17 @@ export class PedidosService {
         pedidoExistente.numeroComprobante = numeroComprobante || pedidoExistente.numeroComprobante;
         pedidoExistente.caeSimulado = caeSimulado || pedidoExistente.caeSimulado;
 
-        // VALIDACIÓN DE MESA (Aislamiento multi-tenant)
         if (createPedidoDto.mesaId) {
           const mesaValida = await queryRunner.manager.findOne(Mesa, { where: { id: createPedidoDto.mesaId, empresaId } });
           if (!mesaValida) throw new BadRequestException('La mesa no pertenece a tu empresa');
           pedidoExistente.mesaId = createPedidoDto.mesaId;
         }
         
-        // Asignar Caja y Liberar Mesa al cobrar
         if (pedidoExistente.estado === 'PAGADO') {
           const cajaAbierta = await queryRunner.manager.findOne(Caja, { where: { usuarioAperturaId: usuarioId, estado: 'ABIERTA' } });
           pedidoExistente.cajaId = cajaAbierta ? cajaAbierta.id : pedidoExistente.cajaId;
           
           if (pedidoExistente.mesaId) {
-            // Al estar asignada previamente, ya validamos que pertenece a la empresa, pero por seguridad la buscamos de nuevo
             const mesa = await queryRunner.manager.findOne(Mesa, { where: { id: pedidoExistente.mesaId, empresaId } });
             if (mesa) {
               await queryRunner.manager.update(Mesa, pedidoExistente.mesaId, { estado: 'LIBRE' });
@@ -145,7 +158,6 @@ export class PedidosService {
           }
         }
 
-        // Validar y descontar stock nuevo
         for (const det of detallesFinales) {
           const recetaNueva = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
@@ -174,10 +186,8 @@ export class PedidosService {
         pedidoGuardado = await queryRunner.manager.save(Pedido, pedidoExistente);
 
       } else {
-        // --- CREAR PEDIDO NUEVO ---
         const cajaAbierta = await queryRunner.manager.findOne(Caja, { where: { usuarioAperturaId: usuarioId, estado: 'ABIERTA' } });
 
-        // VALIDACIÓN DE MESA (Aislamiento multi-tenant)
         if (createPedidoDto.mesaId) {
           const mesaValida = await queryRunner.manager.findOne(Mesa, { where: { id: createPedidoDto.mesaId, empresaId } });
           if (!mesaValida) throw new BadRequestException('La mesa no pertenece a tu empresa');
@@ -189,7 +199,6 @@ export class PedidosService {
           }
         }
 
-        // Validar y descontar stock
         for (const det of detallesFinales) {
           const receta = await queryRunner.manager.find(Receta, {
             where: { producto: { id: det.producto.id } }, relations: { insumo: true }
@@ -214,7 +223,7 @@ export class PedidosService {
         }
 
         const pedidoNuevo = queryRunner.manager.create(Pedido, {
-          total: totalCalculado,
+          total: totalCalculado.toNumber(), // <-- ASIGNAMOS COMO NUMBER
           empresaId,
           sucursalId: createPedidoDto.sucursalId || undefined,
           estado: createPedidoDto.estado || 'PAGADO',
@@ -238,7 +247,70 @@ export class PedidosService {
       }
 
       await queryRunner.commitTransaction();
+
+      await this.auditoriaService.registrar(
+        empresaId, usuarioId, 'PEDIDO', pedidoGuardado.id, 'CREAR', null, { total: pedidoGuardado.total, estado: pedidoGuardado.estado }
+      );
+
       return pedidoGuardado;
+
+    } catch (err) {
+      await queryRunner.rollbackTransaction();
+      throw err;
+    } finally {
+      await queryRunner.release();
+    }
+  }
+
+  async anular(id: string, empresaId: string, motivo: string, usuarioId: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
+
+    try {
+      const pedido = await queryRunner.manager.findOne(Pedido, {
+        where: { id, empresaId },
+        relations: { detalles: { producto: true } }
+      });
+
+      if (!pedido) throw new NotFoundException('Pedido no encontrado');
+      if (pedido.estado === 'ANULADO') throw new BadRequestException('El pedido ya fue anulado');
+
+      const estadoAnterior = pedido.estado;
+
+      for (const det of pedido.detalles) {
+        const receta = await queryRunner.manager.find(Receta, {
+          where: { producto: { id: det.producto.id } }, relations: { insumo: true }
+        });
+        
+        if (receta.length > 0) {
+          for (const item of receta) {
+            const cantidadADevolver = Number(item.cantidad) * det.cantidad;
+            await queryRunner.manager.increment(Insumo, { id: item.insumo.id }, 'stock', cantidadADevolver);
+          }
+        } else {
+          await queryRunner.manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+        }
+      }
+
+      if (pedido.mesaId) {
+        await queryRunner.manager.update(Mesa, pedido.mesaId, { estado: 'LIBRE' });
+      }
+
+      pedido.estado = 'ANULADO';
+      pedido.motivoAnulacion = motivo;
+      pedido.usuarioAnulacionId = usuarioId;
+      pedido.fechaAnulacion = new Date();
+
+      const pedidoAnulado = await queryRunner.manager.save(Pedido, pedido);
+
+      await queryRunner.commitTransaction();
+
+      await this.auditoriaService.registrar(
+        empresaId, usuarioId, 'PEDIDO', pedidoAnulado.id, 'ANULAR', { estado: estadoAnterior }, { estado: 'ANULADO' }, motivo
+      );
+
+      return pedidoAnulado;
 
     } catch (err) {
       await queryRunner.rollbackTransaction();

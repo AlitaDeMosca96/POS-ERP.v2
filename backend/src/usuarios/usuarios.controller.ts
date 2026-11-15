@@ -4,6 +4,7 @@ import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { Roles } from '../auth/roles.decorator';
 import { Rol } from './enums/rol.enum';
+import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 
 @Controller('usuarios')
 export class UsuariosController {
@@ -11,9 +12,9 @@ export class UsuariosController {
 
   @Post()
   @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
-  create(@Body() createUsuarioDto: CreateUsuarioDto, @Req() req: any) {
+  create(@Body() createUsuarioDto: CreateUsuarioDto, @Req() req: RequestWithUser) {
     if (req.user.rol !== Rol.SUPER_ADMIN) {
-      (createUsuarioDto as any).empresaId = req.user.empresaId;
+      createUsuarioDto.empresaId = req.user.empresaId;
       if (createUsuarioDto.rol === Rol.SUPER_ADMIN) {
         throw new ForbiddenException('No tenés permiso para crear un SUPER_ADMIN');
       }
@@ -23,19 +24,19 @@ export class UsuariosController {
 
   @Get()
   @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
-  findAll(@Req() req: any) {
+  findAll(@Req() req: RequestWithUser) {
     return this.usuariosService.findAll(req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 
   @Get(':id')
   @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
-  findOne(@Param('id') id: string, @Req() req: any) {
+  findOne(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.usuariosService.findOne(id, req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 
   @Patch(':id')
   @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
-  update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto, @Req() req: any) {
+  update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto, @Req() req: RequestWithUser) {
     if (req.user.rol !== Rol.SUPER_ADMIN) {
       delete (updateUsuarioDto as any).empresaId; 
       if (updateUsuarioDto.rol === Rol.SUPER_ADMIN) {
@@ -47,7 +48,7 @@ export class UsuariosController {
 
   @Delete(':id')
   @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.usuariosService.remove(id, req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 }

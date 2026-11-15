@@ -3,6 +3,7 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { Public } from './public.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { RequestWithUser } from './interfaces/request-with-user.interface';
 
 @Controller('auth')
 export class AuthController {
@@ -26,19 +27,19 @@ export class AuthController {
 
   @Get('profile')
   @UseGuards(JwtAuthGuard)
-  getProfile(@Req() req: any) {
+  getProfile(@Req() req: RequestWithUser) {
     return req.user;
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/generate')
-  async generate2FA(@Req() req: any) {
+  async generate2FA(@Req() req: RequestWithUser) {
     return this.authService.generateTwoFactorAuthenticationSecret(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/turn-on')
-  async turnOn2FA(@Req() req: any, @Body('code') code: string) {
+  async turnOn2FA(@Req() req: RequestWithUser, @Body('code') code: string) {
     return this.authService.turnOnTwoFactorAuthentication(req.user.id, code);
   }
 }

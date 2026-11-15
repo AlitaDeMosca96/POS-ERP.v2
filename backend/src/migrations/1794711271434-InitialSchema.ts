@@ -1,0 +1,120 @@
+import { MigrationInterface, QueryRunner } from "typeorm";
+
+export class InitialSchema1794711271434 implements MigrationInterface {
+    name = 'InitialSchema1794711271434'
+
+    public async up(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`CREATE TABLE "planes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "precioMensual" numeric(10,2) NOT NULL, "limiteSucursales" integer NOT NULL DEFAULT '1', "limiteUsuarios" integer NOT NULL DEFAULT '5', "activo" boolean NOT NULL DEFAULT true, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_91be19f449ba03767fe51acdebc" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "empresas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "cuit" character varying(20), "monedaBase" character varying(10) NOT NULL DEFAULT 'ARS', "configuracionRegional" jsonb, "activa" boolean NOT NULL DEFAULT true, "planId" uuid, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "plan_id" uuid, CONSTRAINT "UQ_d44c02e8554f6356ac1d5c059e7" UNIQUE ("cuit"), CONSTRAINT "PK_ce7b122b37c6499bfd6520873e1" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "sucursales" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "direccion" character varying(255), "activa" boolean NOT NULL DEFAULT true, "empresaId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_c2232960c9e458db5b18d35eeba" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TYPE "public"."usuarios_rol_enum" AS ENUM('SUPER_ADMIN', 'ADMIN', 'CAJERO', 'COCINA', 'MOZO')`);
+        await queryRunner.query(`CREATE TABLE "usuarios" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "email" character varying(255) NOT NULL, "password" character varying(255) NOT NULL, "nombre" character varying(255) NOT NULL, "rol" "public"."usuarios_rol_enum" NOT NULL DEFAULT 'CAJERO', "empresaId" uuid, "sucursalId" uuid, "activo" boolean NOT NULL DEFAULT true, "twoFactorSecret" character varying, "twoFactorEnabled" boolean NOT NULL DEFAULT false, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "sucursal_id" uuid, CONSTRAINT "UQ_446adfc18b35418aac32ae0b7b5" UNIQUE ("email"), CONSTRAINT "PK_d7281c63c176e152e4c531594a8" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "auditorias" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "accion" character varying(255) NOT NULL, "tipo" character varying(50) NOT NULL, "adminEmail" character varying(255), "fecha" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_b84b3505f313ab1a44e7b684ee2" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "categorias" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "empresaId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_3886a26251605c571c6b4f861fe" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "productos" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "precio" numeric(10,2) NOT NULL DEFAULT '0', "costo" numeric(10,2) NOT NULL DEFAULT '0', "stock" integer NOT NULL DEFAULT '0', "activo" boolean NOT NULL DEFAULT true, "empresaId" uuid NOT NULL, "categoriaId" uuid, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "categoria_id" uuid, CONSTRAINT "PK_04f604609a0949a7f3b43400766" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "insumos" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "unidadMedida" character varying(50) NOT NULL DEFAULT 'UNIDAD', "stock" numeric(10,2) NOT NULL DEFAULT '0', "costo" numeric(10,2) NOT NULL DEFAULT '0', "empresaId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_b4e1b727a7b140e698e3a3dc7af" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "recetas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "cantidad" numeric(10,2) NOT NULL, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "producto_id" uuid, "insumo_id" uuid, CONSTRAINT "PK_a6aab8454e63427220402884c73" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "mesas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(50) NOT NULL, "capacidad" integer NOT NULL DEFAULT '4', "estado" character varying NOT NULL DEFAULT 'LIBRE', "empresaId" uuid NOT NULL, "sucursalId" uuid, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "sucursal_id" uuid, CONSTRAINT "PK_ccff054bd3dad6539869d03350c" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "clientes" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "telefono" character varying(50), "email" character varying(255), "empresaId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_d76bf3571d906e4e86470482c08" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "reservas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "fechaHora" TIMESTAMP NOT NULL, "cantidadPersonas" integer NOT NULL, "estado" character varying NOT NULL DEFAULT 'PENDIENTE', "empresaId" uuid NOT NULL, "mesaId" uuid NOT NULL, "clienteId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "mesa_id" uuid, "cliente_id" uuid, CONSTRAINT "PK_309c659053bcf5e56f8e40a2b42" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "proveedores" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "telefono" character varying(50), "email" character varying(255), "direccion" character varying(255), "empresaId" uuid NOT NULL, "deletedAt" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_1dcf121f19f362fb1b4c0a493a9" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "pedido_detalles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "cantidad" integer NOT NULL, "precioUnitario" numeric(10,2) NOT NULL, "notas" character varying(255), "pedido_id" uuid, "producto_id" uuid, CONSTRAINT "PK_309b3edae7345e329fd6e3ff09a" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "cajas" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "empresaId" character varying, "sucursalId" character varying, "usuarioAperturaId" character varying, "usuarioCierreId" character varying, "montoInicial" numeric(10,2) NOT NULL DEFAULT '0', "saldoEsperado" numeric(10,2) NOT NULL DEFAULT '0', "saldoFinal" numeric(10,2) DEFAULT '0', "estado" character varying NOT NULL DEFAULT 'ABIERTA', "fechaCierre" TIMESTAMP, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "updatedAt" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_92b27e5f4ab36a544f37bf45e09" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "pedidos" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "total" numeric(10,2) NOT NULL, "estado" character varying NOT NULL DEFAULT 'PAGADO', "estadoCocina" character varying NOT NULL DEFAULT 'PENDIENTE', "metodoPago" character varying NOT NULL DEFAULT 'EFECTIVO', "direccionEntrega" character varying, "costoEnvio" numeric(10,2) NOT NULL DEFAULT '0', "estadoDelivery" character varying NOT NULL DEFAULT 'NO_APLICA', "tipoFactura" character varying NOT NULL DEFAULT 'FACTURA_B', "cuitFactura" character varying, "razonSocialFactura" character varying, "numeroComprobante" character varying, "caeSimulado" character varying, "motivoAnulacion" character varying, "usuarioAnulacionId" uuid, "fechaAnulacion" TIMESTAMP, "empresaId" uuid NOT NULL, "sucursalId" uuid, "mesaId" uuid, "cajaId" uuid, "clienteId" uuid, "createdAt" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "sucursal_id" uuid, "mesa_id" uuid, "caja_id" uuid, "cliente_id" uuid, CONSTRAINT "PK_ebb5680ed29a24efdc586846725" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "modificadores" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "nombre" character varying(255) NOT NULL, "precioExtra" numeric(10,2) NOT NULL DEFAULT '0', "productoId" uuid NOT NULL, "producto_id" uuid, CONSTRAINT "PK_3b37cb608e55714f708a71b23f2" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "compras" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "total" numeric(10,2) NOT NULL, "empresaId" uuid NOT NULL, "proveedorId" uuid NOT NULL, "fecha" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, "proveedor_id" uuid, CONSTRAINT "PK_63037d5249eefe140e3587ff6f2" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "compra_detalles" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "cantidad" numeric(10,2) NOT NULL, "costoUnitario" numeric(10,2) NOT NULL, "compra_id" uuid, "insumo_id" uuid, CONSTRAINT "PK_275e76dd0e6fc62eee69072fbba" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "campanias" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "asunto" character varying(255) NOT NULL, "mensaje" text NOT NULL, "cantidadEnviados" integer NOT NULL DEFAULT '0', "empresaId" uuid NOT NULL, "fecha" TIMESTAMP NOT NULL DEFAULT now(), "empresa_id" uuid, CONSTRAINT "PK_1f5e014dc8cb6c3eb7eeb3cb552" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "movimientos_caja" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "tipo" character varying(50) NOT NULL, "monto" numeric(10,2) NOT NULL, "motivo" character varying(255) NOT NULL, "cajaId" uuid NOT NULL, "fecha" TIMESTAMP NOT NULL DEFAULT now(), "caja_id" uuid, CONSTRAINT "PK_a35825837a156d21e0b922fa627" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "auditorias_sistema" ("id" uuid NOT NULL DEFAULT uuid_generate_v4(), "empresaId" uuid NOT NULL, "usuarioId" uuid, "entidad" character varying(50) NOT NULL, "entidadId" uuid, "accion" character varying(50) NOT NULL, "datosAnteriores" jsonb, "datosNuevos" jsonb, "motivo" character varying(255), "fecha" TIMESTAMP NOT NULL DEFAULT now(), CONSTRAINT "PK_4ad8a96dbd1bcc9712355f534f8" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`ALTER TABLE "empresas" ADD CONSTRAINT "FK_c1849f6c34016790fd94dfdca3f" FOREIGN KEY ("plan_id") REFERENCES "planes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "sucursales" ADD CONSTRAINT "FK_9da95c9691116c5c72fd56dee28" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "usuarios" ADD CONSTRAINT "FK_f7a79f991bd7319aef158bfbd38" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "usuarios" ADD CONSTRAINT "FK_7719925fa8ab656620a0f394777" FOREIGN KEY ("sucursal_id") REFERENCES "sucursales"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "categorias" ADD CONSTRAINT "FK_f4653d9281a77dc8918ab07c31c" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "productos" ADD CONSTRAINT "FK_4697737382403af5c31644ad3ce" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "productos" ADD CONSTRAINT "FK_5aaee6054b643e7c778477193a3" FOREIGN KEY ("categoria_id") REFERENCES "categorias"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "insumos" ADD CONSTRAINT "FK_a2eb137778163d81403bcbea7ec" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recetas" ADD CONSTRAINT "FK_378be9164fb2f3acc1a1ab2fcc7" FOREIGN KEY ("producto_id") REFERENCES "productos"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "recetas" ADD CONSTRAINT "FK_bbd70b2270771e99ca524346131" FOREIGN KEY ("insumo_id") REFERENCES "insumos"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "mesas" ADD CONSTRAINT "FK_e4a09438b20c916eb868bcd20b1" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "mesas" ADD CONSTRAINT "FK_9d9171af4f2e9357e0598b3abea" FOREIGN KEY ("sucursal_id") REFERENCES "sucursales"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "clientes" ADD CONSTRAINT "FK_3ce809993f778f2137901b80169" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "reservas" ADD CONSTRAINT "FK_5259635b737320d3ab684f76700" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "reservas" ADD CONSTRAINT "FK_d4d544979009adb460c6c97c52e" FOREIGN KEY ("mesa_id") REFERENCES "mesas"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "reservas" ADD CONSTRAINT "FK_f5a0559320f5dec880533a41d2e" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "proveedores" ADD CONSTRAINT "FK_7630257f63aa3b3573e0f38be6b" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedido_detalles" ADD CONSTRAINT "FK_5e6259e632098b78d455b9bff24" FOREIGN KEY ("pedido_id") REFERENCES "pedidos"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedido_detalles" ADD CONSTRAINT "FK_a4cf77cae065ff2ecc1944a007d" FOREIGN KEY ("producto_id") REFERENCES "productos"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedidos" ADD CONSTRAINT "FK_31409edc44a8c0e837c820f29ef" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedidos" ADD CONSTRAINT "FK_48c439490d8cc5b4a0dd4219dda" FOREIGN KEY ("sucursal_id") REFERENCES "sucursales"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedidos" ADD CONSTRAINT "FK_ed48ccf11914571bc1c845e592d" FOREIGN KEY ("mesa_id") REFERENCES "mesas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedidos" ADD CONSTRAINT "FK_147d21968d5732e33ef89e767ae" FOREIGN KEY ("caja_id") REFERENCES "cajas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "pedidos" ADD CONSTRAINT "FK_2fc639de84f845569ac2c9f78aa" FOREIGN KEY ("cliente_id") REFERENCES "clientes"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "modificadores" ADD CONSTRAINT "FK_771365dddb6c2e977a57d792ee2" FOREIGN KEY ("producto_id") REFERENCES "productos"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "compras" ADD CONSTRAINT "FK_58e61c18802e9d812ec5148708a" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "compras" ADD CONSTRAINT "FK_d7b3950fea313d15e46e0c59286" FOREIGN KEY ("proveedor_id") REFERENCES "proveedores"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "compra_detalles" ADD CONSTRAINT "FK_a3f5e9f7c9f23f76ef2814b0472" FOREIGN KEY ("compra_id") REFERENCES "compras"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "compra_detalles" ADD CONSTRAINT "FK_4eae4744592e453f4bdb22368ea" FOREIGN KEY ("insumo_id") REFERENCES "insumos"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "campanias" ADD CONSTRAINT "FK_aaa185d622351eb5ae1c70d1c61" FOREIGN KEY ("empresa_id") REFERENCES "empresas"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "movimientos_caja" ADD CONSTRAINT "FK_fa3667fcb88a50ddfe4f39aa800" FOREIGN KEY ("caja_id") REFERENCES "cajas"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+    }
+
+    public async down(queryRunner: QueryRunner): Promise<void> {
+        await queryRunner.query(`ALTER TABLE "movimientos_caja" DROP CONSTRAINT "FK_fa3667fcb88a50ddfe4f39aa800"`);
+        await queryRunner.query(`ALTER TABLE "campanias" DROP CONSTRAINT "FK_aaa185d622351eb5ae1c70d1c61"`);
+        await queryRunner.query(`ALTER TABLE "compra_detalles" DROP CONSTRAINT "FK_4eae4744592e453f4bdb22368ea"`);
+        await queryRunner.query(`ALTER TABLE "compra_detalles" DROP CONSTRAINT "FK_a3f5e9f7c9f23f76ef2814b0472"`);
+        await queryRunner.query(`ALTER TABLE "compras" DROP CONSTRAINT "FK_d7b3950fea313d15e46e0c59286"`);
+        await queryRunner.query(`ALTER TABLE "compras" DROP CONSTRAINT "FK_58e61c18802e9d812ec5148708a"`);
+        await queryRunner.query(`ALTER TABLE "modificadores" DROP CONSTRAINT "FK_771365dddb6c2e977a57d792ee2"`);
+        await queryRunner.query(`ALTER TABLE "pedidos" DROP CONSTRAINT "FK_2fc639de84f845569ac2c9f78aa"`);
+        await queryRunner.query(`ALTER TABLE "pedidos" DROP CONSTRAINT "FK_147d21968d5732e33ef89e767ae"`);
+        await queryRunner.query(`ALTER TABLE "pedidos" DROP CONSTRAINT "FK_ed48ccf11914571bc1c845e592d"`);
+        await queryRunner.query(`ALTER TABLE "pedidos" DROP CONSTRAINT "FK_48c439490d8cc5b4a0dd4219dda"`);
+        await queryRunner.query(`ALTER TABLE "pedidos" DROP CONSTRAINT "FK_31409edc44a8c0e837c820f29ef"`);
+        await queryRunner.query(`ALTER TABLE "pedido_detalles" DROP CONSTRAINT "FK_a4cf77cae065ff2ecc1944a007d"`);
+        await queryRunner.query(`ALTER TABLE "pedido_detalles" DROP CONSTRAINT "FK_5e6259e632098b78d455b9bff24"`);
+        await queryRunner.query(`ALTER TABLE "proveedores" DROP CONSTRAINT "FK_7630257f63aa3b3573e0f38be6b"`);
+        await queryRunner.query(`ALTER TABLE "reservas" DROP CONSTRAINT "FK_f5a0559320f5dec880533a41d2e"`);
+        await queryRunner.query(`ALTER TABLE "reservas" DROP CONSTRAINT "FK_d4d544979009adb460c6c97c52e"`);
+        await queryRunner.query(`ALTER TABLE "reservas" DROP CONSTRAINT "FK_5259635b737320d3ab684f76700"`);
+        await queryRunner.query(`ALTER TABLE "clientes" DROP CONSTRAINT "FK_3ce809993f778f2137901b80169"`);
+        await queryRunner.query(`ALTER TABLE "mesas" DROP CONSTRAINT "FK_9d9171af4f2e9357e0598b3abea"`);
+        await queryRunner.query(`ALTER TABLE "mesas" DROP CONSTRAINT "FK_e4a09438b20c916eb868bcd20b1"`);
+        await queryRunner.query(`ALTER TABLE "recetas" DROP CONSTRAINT "FK_bbd70b2270771e99ca524346131"`);
+        await queryRunner.query(`ALTER TABLE "recetas" DROP CONSTRAINT "FK_378be9164fb2f3acc1a1ab2fcc7"`);
+        await queryRunner.query(`ALTER TABLE "insumos" DROP CONSTRAINT "FK_a2eb137778163d81403bcbea7ec"`);
+        await queryRunner.query(`ALTER TABLE "productos" DROP CONSTRAINT "FK_5aaee6054b643e7c778477193a3"`);
+        await queryRunner.query(`ALTER TABLE "productos" DROP CONSTRAINT "FK_4697737382403af5c31644ad3ce"`);
+        await queryRunner.query(`ALTER TABLE "categorias" DROP CONSTRAINT "FK_f4653d9281a77dc8918ab07c31c"`);
+        await queryRunner.query(`ALTER TABLE "usuarios" DROP CONSTRAINT "FK_7719925fa8ab656620a0f394777"`);
+        await queryRunner.query(`ALTER TABLE "usuarios" DROP CONSTRAINT "FK_f7a79f991bd7319aef158bfbd38"`);
+        await queryRunner.query(`ALTER TABLE "sucursales" DROP CONSTRAINT "FK_9da95c9691116c5c72fd56dee28"`);
+        await queryRunner.query(`ALTER TABLE "empresas" DROP CONSTRAINT "FK_c1849f6c34016790fd94dfdca3f"`);
+        await queryRunner.query(`DROP TABLE "auditorias_sistema"`);
+        await queryRunner.query(`DROP TABLE "movimientos_caja"`);
+        await queryRunner.query(`DROP TABLE "campanias"`);
+        await queryRunner.query(`DROP TABLE "compra_detalles"`);
+        await queryRunner.query(`DROP TABLE "compras"`);
+        await queryRunner.query(`DROP TABLE "modificadores"`);
+        await queryRunner.query(`DROP TABLE "pedidos"`);
+        await queryRunner.query(`DROP TABLE "cajas"`);
+        await queryRunner.query(`DROP TABLE "pedido_detalles"`);
+        await queryRunner.query(`DROP TABLE "proveedores"`);
+        await queryRunner.query(`DROP TABLE "reservas"`);
+        await queryRunner.query(`DROP TABLE "clientes"`);
+        await queryRunner.query(`DROP TABLE "mesas"`);
+        await queryRunner.query(`DROP TABLE "recetas"`);
+        await queryRunner.query(`DROP TABLE "insumos"`);
+        await queryRunner.query(`DROP TABLE "productos"`);
+        await queryRunner.query(`DROP TABLE "categorias"`);
+        await queryRunner.query(`DROP TABLE "auditorias"`);
+        await queryRunner.query(`DROP TABLE "usuarios"`);
+        await queryRunner.query(`DROP TYPE "public"."usuarios_rol_enum"`);
+        await queryRunner.query(`DROP TABLE "sucursales"`);
+        await queryRunner.query(`DROP TABLE "empresas"`);
+        await queryRunner.query(`DROP TABLE "planes"`);
+    }
+
+}

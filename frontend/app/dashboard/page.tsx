@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetcher } from '../../lib/api';
+import { verificarSesion } from '../../lib/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export default function DashboardPage() {
@@ -13,26 +14,12 @@ export default function DashboardPage() {
   const router = useRouter();
 
   useEffect(() => {
-    const userStr = localStorage.getItem('usuario');
-    
-    // VALIDACIÓN PARA QUE NO EXPLOTE SI ES "undefined"
-    if (!userStr || userStr === 'undefined' || userStr === 'null') {
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
-      router.push('/');
-      return;
-    }
+    // Validar sesión leyendo el JWT real
+    const user = verificarSesion();
+    if (!user) return;
 
-    try {
-      setUsuario(JSON.parse(userStr));
-    } catch (e) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('usuario');
-      router.push('/');
-      return;
-    }
+    setUsuario(user);
 
-    // Buscamos los datos de reportes
     fetcher('/reportes/resumen')
       .then((data) => {
         setResumen(data);
@@ -58,13 +45,11 @@ export default function DashboardPage() {
     return <div className="min-h-screen flex items-center justify-center">Cargando dashboard...</div>;
   }
 
-  // Colores para el gráfico de torta
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   return (
     <div className="min-h-screen bg-gray-50 p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Header */}
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
@@ -80,7 +65,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Tarjetas de Resumen */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
           <div className="bg-white p-6 rounded-lg shadow border-l-4 border-blue-500">
             <h2 className="text-lg font-semibold text-gray-600">Ventas Totales</h2>
@@ -96,9 +80,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Gráficos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Gráfico de Torta (Métodos de Pago) */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-600 mb-4">Ventas por Método de Pago</h2>
             <div className="h-64">
@@ -127,7 +109,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Gráfico de Barras (Top Productos) */}
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-600 mb-4">Top 5 Productos</h2>
             <div className="h-64">

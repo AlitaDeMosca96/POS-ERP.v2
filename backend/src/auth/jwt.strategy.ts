@@ -23,7 +23,12 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 
   async validate(payload: any) {
-    const usuario = await this.usuariosService.findOne(payload.sub);
+    let usuario;
+    try {
+      usuario = await this.usuariosService.findOne(payload.sub);
+    } catch (error) {
+      throw new UnauthorizedException('Token inválido o usuario inexistente');
+    }
     
     if (!usuario || !usuario.activo) {
       throw new UnauthorizedException('Token inválido o usuario inactivo');
@@ -33,12 +38,14 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       throw new UnauthorizedException('La cuenta de la empresa está suspendida');
     }
 
+    // IMPORTANTE: Devolvemos usuario.rol (de la BD) y no payload.rol (del token)
     return { 
-      id: payload.sub, 
-      email: payload.email, 
-      rol: payload.rol, 
-      empresaId: payload.empresaId,
-      sucursalId: payload.sucursalId 
+      id: usuario.id, 
+      email: usuario.email, 
+      rol: usuario.rol, 
+      empresaId: usuario.empresaId,
+      sucursalId: usuario.sucursalId,
+      isImpersonation: payload.isImpersonation || false // <-- NUEVO
     };
   }
 }

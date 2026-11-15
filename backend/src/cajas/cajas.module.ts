@@ -3,9 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { CajasService } from './cajas.service';
 import { CajasController } from './cajas.controller';
 import { Caja } from './entities/caja.entity';
+import { MovimientoCaja } from './entities/movimiento-caja.entity';
+import { Pedido } from '../pedidos/entities/pedido.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Caja])],
+  imports: [TypeOrmModule.forFeature([Caja, MovimientoCaja, Pedido])],
   controllers: [CajasController],
   providers: [CajasService],
   exports: [CajasService]

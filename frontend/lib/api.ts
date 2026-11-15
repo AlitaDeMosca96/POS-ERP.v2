@@ -22,7 +22,14 @@ export async function fetcher(url: string, options: RequestInit = {}) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
-      window.location.href = '/';
+      
+      // Si estamos en la zona de Super Admin, redirigimos al login maestro
+      if (window.location.pathname.startsWith('/super-admin')) {
+        window.location.href = '/master-login';
+      } else {
+        // Si estamos en el POS o Dashboard normal, redirigimos al login de clientes
+        window.location.href = '/';
+      }
     }
     throw new Error('Sesión expirada');
   }

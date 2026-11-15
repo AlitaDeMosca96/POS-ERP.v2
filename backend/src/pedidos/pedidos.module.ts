@@ -10,11 +10,11 @@ import { Caja } from '../cajas/entities/caja.entity';
 import { Receta } from '../recetas/entities/receta.entity';
 import { Insumo } from '../insumos/entities/insumo.entity';
 import { Cliente } from '../clientes/entities/cliente.entity';
-import { Modificadore } from '../modificadores/entities/modificadore.entity'; // <-- NUEVO
+import { Modificadore } from '../modificadores/entities/modificadore.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pedido, PedidoDetalle, Producto, Mesa, Caja, Receta, Insumo, Cliente, Modificadore]) // <-- AGREGADO
+    TypeOrmModule.forFeature([Pedido, PedidoDetalle, Producto, Mesa, Caja, Receta, Insumo, Cliente, Modificadore])
   ],
   controllers: [PedidosController],
   providers: [PedidosService],

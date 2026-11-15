@@ -6,7 +6,6 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
-// IMPORTACIÓN DE TODOS TUS MÓDULOS
 import { AuthModule } from './auth/auth.module';
 import { CajasModule } from './cajas/cajas.module';
 import { CampaniasModule } from './campanias/campanias.module';
@@ -27,12 +26,12 @@ import { ReservasModule } from './reservas/reservas.module';
 import { SucursalesModule } from './sucursales/sucursales.module';
 import { SuperAdminModule } from './super-admin/super-admin.module';
 import { UsuariosModule } from './usuarios/usuarios.module';
+import { AuditoriaModule } from './auditoria/auditoria.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     
-    // PROTECCIÓN CONTRA FUERZA BRUTA (100 peticiones por minuto por IP)
     ThrottlerModule.forRoot([{
       ttl: 60000,
       limit: 100,
@@ -46,9 +45,10 @@ import { UsuariosModule } from './usuarios/usuarios.module';
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'pos_erp',
       autoLoadEntities: true, 
-      synchronize: true, // Se mantiene por ahora hasta implementar migraciones
+      synchronize: false, // <-- DESACTIVADO
     }),
     
+    AuditoriaModule,
     AuthModule, CajasModule, CampaniasModule, CategoriasModule, ClientesModule,
     ComprasModule, EmpresasModule, InsumosModule, MesasModule, ModificadoresModule,
     PedidosModule, PlanesModule, ProductosModule, ProveedoresModule, RecetasModule,
@@ -59,7 +59,7 @@ import { UsuariosModule } from './usuarios/usuarios.module';
     AppService,
     {
       provide: APP_GUARD,
-      useClass: ThrottlerGuard, // Aplica el límite de peticiones a nivel global
+      useClass: ThrottlerGuard,
     }
   ],
 })

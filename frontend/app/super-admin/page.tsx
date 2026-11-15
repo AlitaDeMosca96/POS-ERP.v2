@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetcher } from '../../lib/api';
+import { verificarSesion } from '../../lib/auth';
 
 export default function SuperAdminPage() {
   const router = useRouter();
@@ -13,27 +14,10 @@ export default function SuperAdminPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Validar sesión
-    const token = localStorage.getItem('token');
-    const usuarioStr = localStorage.getItem('usuario');
-    
-    if (!token || !usuarioStr || usuarioStr === 'undefined') {
-      router.push('/master-login');
-      return;
-    }
+    // Validar sesión exigiendo rol SUPER_ADMIN
+    const user = verificarSesion('SUPER_ADMIN');
+    if (!user) return;
 
-    try {
-      const usuario = JSON.parse(usuarioStr);
-      if (usuario.rol !== 'SUPER_ADMIN') {
-        router.push('/master-login');
-        return;
-      }
-    } catch (e) {
-      router.push('/master-login');
-      return;
-    }
-
-    // Cargar datos del backend
     Promise.all([
       fetcher('/super-admin/metrics'),
       fetcher('/super-admin/empresas')
@@ -85,7 +69,6 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          {/* Tarjetas de Métricas */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
             <div className="bg-[#121212] p-6 rounded-xl border border-[#2a2a2a] shadow-lg border-l-4 border-l-[#d4af37]">
               <p className="text-xs text-gray-400 font-bold uppercase tracking-wider mb-2">MRR (Mensual)</p>
@@ -109,7 +92,6 @@ export default function SuperAdminPage() {
             </div>
           </div>
 
-          {/* Tabla de Empresas */}
           <div className="bg-[#121212] rounded-xl border border-[#2a2a2a] overflow-hidden shadow-lg">
             <div className="p-6 border-b border-[#2a2a2a]">
               <h2 className="text-xl font-light text-white tracking-wider">Empresas Registradas</h2>
@@ -153,7 +135,6 @@ export default function SuperAdminPage() {
       );
     }
 
-    // Vista para secciones en construcción
     return (
       <div className="flex-1 p-8 flex items-center justify-center">
         <div className="text-center">
@@ -169,7 +150,6 @@ export default function SuperAdminPage() {
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] flex font-sans">
-      {/* Sidebar */}
       <aside className="w-72 bg-[#0f0f0f] border-r border-[#2a2a2a] flex flex-col">
         <div className="h-20 flex items-center px-8 border-b border-[#2a2a2a]">
           <div className="w-8 h-8 bg-[#d4af37] rounded flex items-center justify-center mr-3">
@@ -203,7 +183,6 @@ export default function SuperAdminPage() {
             Planes y Suscripciones
           </button>
 
-          {/* ENLACE REAL PARA SEGURIDAD */}
           <Link 
             href="/super-admin/seguridad"
             className="w-full flex items-center px-4 py-3 rounded-lg transition-all text-gray-400 hover:text-white hover:bg-[#1a1a1a]"
@@ -256,7 +235,6 @@ export default function SuperAdminPage() {
         </div>
       </aside>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0a0a0a]">
         {renderContent()}
       </main>
