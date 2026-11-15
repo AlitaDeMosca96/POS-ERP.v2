@@ -1,10 +1,10 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, ForbiddenException } from '@nestjs/common';
 import { UsuariosService } from './usuarios.service';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
-// import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-// import { RolesGuard } from '../auth/roles.guard';
-// import { Roles } from '../auth/roles.decorator';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { Rol } from './enums/rol.enum';
 
 @Controller('usuarios')
@@ -13,38 +13,47 @@ export class UsuariosController {
   constructor(private readonly usuariosService: UsuariosService) {}
 
   @Post()
-  // @Roles(Rol.ADMIN, Rol.SUPER_ADMIN)
-  create(@Body() createUsuarioDto: CreateUsuarioDto, @Request() req: any) {
-    createUsuarioDto.empresaId = createUsuarioDto.empresaId || req.user?.empresaId;
-    
-    if (req.user && req.user.rol !== Rol.SUPER_ADMIN) {
+  @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
+  create(@Body() createUsuarioDto: CreateUsuarioDto, @Req() req: any) {
+    // Si no es super admin, forzamos que el usuario se cree en su misma empresa
+    if (req.user.rol !== Rol.SUPER_ADMIN) {
+      createUsuarioDto.empresaId = req.user.empresaId;
+      // Evitar que un admin cree otro super admin
       if (createUsuarioDto.rol === Rol.SUPER_ADMIN) {
-        throw new ForbiddenException('No podés crear un Super Admin');
+        throw new ForbiddenException('No tenés permiso para crear un SUPER_ADMIN');
       }
-      createUsuarioDto.rol = createUsuarioDto.rol || Rol.CAJERO; 
     }
-    
     return this.usuariosService.create(createUsuarioDto);
   }
 
   @Get()
-  // @Roles(Rol.ADMIN, Rol.SUPER_ADMIN)
-  findAll(@Request() req: any) {
-    return this.usuariosService.findAll(req.user?.empresaId || '');
+  @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
+  findAll(@Req() req: any) {
+    // Si es super admin, ve todos. Si es admin, solo los de su empresa.
+    return this.usuariosService.findAll(req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.usuariosService.findOne(id);
+  @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.usuariosService.findOne(id, req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto, @Request() req: any) {
-    return this.usuariosService.update(id, updateUsuarioDto);
+  @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
+  update(@Param('id') id: string, @Body() updateUsuarioDto: UpdateUsuarioDto, @Req() req: any) {
+    if (req.user.rol !== Rol.SUPER_ADMIN) {
+      delete updateUsuarioDto.empresaId; // No puede cambiar de empresa
+      if (updateUsuarioDto.rol === Rol.SUPER_ADMIN) {
+        throw new ForbiddenException('No tenés permiso para ascender a SUPER_ADMIN');
+      }
+    }
+    return this.usuariosService.update(id, updateUsuarioDto, req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.usuariosService.remove(id);
+  @Roles(Rol.SUPER_ADMIN, Rol.ADMIN)
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.usuariosService.remove(id, req.user.rol === Rol.SUPER_ADMIN ? undefined : req.user.empresaId);
   }
 }

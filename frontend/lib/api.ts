@@ -1,51 +1,39 @@
-export const fetcher = async (url: string, options: RequestInit = {}) => {
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'; // Ajusta el puerto si tu backend no es 3000
+
+export async function fetcher(url: string, options: RequestInit = {}) {
   const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
 
-  const headers = new Headers(options.headers || {});
-  if (token && !headers.has('Authorization')) {
-    headers.set('Authorization', `Bearer ${token}`);
-  }
-  if (!headers.has('Content-Type') && options.method && options.method !== 'GET') {
-    headers.set('Content-Type', 'application/json');
-  }
+  // Si la URL es relativa, le pegamos el backend
+  const fullUrl = url.startsWith('/api') ? `${API_URL}${url.replace('/api', '')}` : url;
 
-  const apiUrl = url.startsWith('/api') ? url : `/api${url.startsWith('/') ? url : `/${url}`}`;
-
-  const response = await fetch(apiUrl, {
+  const response = await fetch(fullUrl, {
     ...options,
     headers,
   });
 
+  // Si el token expiró o es inválido
   if (response.status === 401) {
-    const errorData = await response.json().catch(() => ({}));
-    
-    if (typeof window !== 'undefined' && !url.includes('/auth/')) {
-      localStorage.clear();
-      const path = window.location.pathname;
-      if (path !== '/' && path !== '/master-login') {
-        window.location.href = path.startsWith('/super-admin') ? '/master-login' : '/';
-      }
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('token');
+      window.location.href = '/login';
     }
-    throw new Error(errorData.message || 'No autorizado');
+    throw new Error('Sesión expirada');
   }
-
-  if (response.status === 404) return null;
 
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || 'Error en la petición');
+    const errorText = await response.text();
+    throw new Error(errorText || `Error HTTP: ${response.status}`);
   }
 
-  // --- NUEVO: LEEMOS EL TEXTO PRIMERO Y VALIDAMOS SI ESTÁ VACÍO ---
+  // ACÁ ESTÁ LA SOLUCIÓN AL ERROR: Leemos como texto primero
   const text = await response.text();
-  if (!text || text.trim() === '') {
-    return null; 
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    console.error("Error al parsear JSON:", text);
-    return null;
-  }
-};
+  
+  // Si el backend devuelve vacío (ej: null o 204), evitamos que JSON.parse explote
+  return text ? JSON.parse(text) : null;
+}
