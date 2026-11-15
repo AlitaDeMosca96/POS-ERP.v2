@@ -7,6 +7,7 @@ import { Pedido } from '../pedidos/entities/pedido.entity';
 import { MetricsService } from './metrics.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { Rol } from '../usuarios/enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
 
 @Injectable()
 export class SuperAdminService {
@@ -67,7 +68,7 @@ export class SuperAdminService {
       email: data.adminEmail,
       password: hashedPassword, 
       nombre: data.adminNombre,
-      rol: 'ADMIN',
+      rol: Rol.ADMIN, // <-- USAMOS EL ENUM
       empresaId: empresa.id
     });
     await this.usuarioRepository.save(admin);
@@ -93,7 +94,7 @@ export class SuperAdminService {
 
   async impersonarAdmin(empresaId: string, adminEmail: string) {
     const admin = await this.usuarioRepository.findOne({ 
-      where: { empresaId, rol: 'ADMIN' },
+      where: { empresaId, rol: Rol.ADMIN }, // <-- USAMOS EL ENUM
       relations: { empresa: true }
     });
 

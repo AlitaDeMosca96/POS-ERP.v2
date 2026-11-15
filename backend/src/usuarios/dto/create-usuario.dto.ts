@@ -1,4 +1,5 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { Rol } from '../enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
 
 export class CreateUsuarioDto {
   @IsEmail({}, { message: 'Email inválido' })
@@ -12,9 +13,9 @@ export class CreateUsuarioDto {
   @IsNotEmpty()
   nombre: string;
 
-  @IsString()
+  @IsEnum(Rol) // <-- VALIDAMOS QUE SEA UN ROL VÁLIDO
   @IsOptional()
-  rol?: string;
+  rol?: Rol;
 
   @IsUUID()
   @IsOptional()

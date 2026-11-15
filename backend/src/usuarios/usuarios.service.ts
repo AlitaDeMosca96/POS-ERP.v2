@@ -5,6 +5,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Usuario } from './entities/usuario.entity';
 import * as bcrypt from 'bcrypt';
+import { Rol } from './enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
 
 @Injectable()
 export class UsuariosService {
@@ -18,7 +19,7 @@ export class UsuariosService {
       email: createUsuarioDto.email,
       password: createUsuarioDto.password,
       nombre: createUsuarioDto.nombre,
-      rol: createUsuarioDto.rol || 'CAJERO',
+      rol: createUsuarioDto.rol || Rol.CAJERO, // <-- USAMOS EL ENUM
       empresaId: createUsuarioDto.empresaId,
       sucursal: createUsuarioDto.sucursalId ? { id: createUsuarioDto.sucursalId } : undefined
     });
@@ -58,10 +59,10 @@ export class UsuariosService {
       const salt = await bcrypt.genSalt(10);
       updateUsuarioDto.password = await bcrypt.hash(updateUsuarioDto.password, salt);
     }
-    return this.usuarioRepository.update(id, updateUsuarioDto);
+    return this.usuarioRepository.update(id, updateUsuarioDto as any);
   }
 
   async remove(id: string) {
-    return this.usuarioRepository.softDelete(id); // <-- SOFT DELETE
+    return this.usuarioRepository.softDelete(id);
   }
 }

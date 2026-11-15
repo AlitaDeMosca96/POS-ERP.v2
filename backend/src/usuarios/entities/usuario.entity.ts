@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Sucursal } from '../../sucursales/entities/sucursal.entity';
+import { Rol } from '../enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
 
 @Entity('usuarios')
 export class Usuario {
@@ -16,8 +17,9 @@ export class Usuario {
   @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  @Column({ type: 'varchar', length: 50, default: 'CAJERO' })
-  rol: string; 
+  // AHORA ES UN ENUM SEGURO
+  @Column({ type: 'enum', enum: Rol, default: Rol.CAJERO })
+  rol: Rol; 
 
   @ManyToOne(() => Empresa)
   @JoinColumn({ name: 'empresa_id' })
