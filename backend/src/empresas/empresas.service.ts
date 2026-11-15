@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,7 +13,12 @@ export class EmpresasService {
   ) {}
 
   create(createEmpresaDto: CreateEmpresaDto) {
-    const empresa = this.empresaRepository.create(createEmpresaDto);
+    const empresa = this.empresaRepository.create({
+      nombre: createEmpresaDto.nombre,
+      cuit: createEmpresaDto.cuit || undefined,
+      monedaBase: createEmpresaDto.monedaBase || 'ARS',
+      activa: true
+    });
     return this.empresaRepository.save(empresa);
   }
 

@@ -19,7 +19,6 @@ export const fetcher = async (url: string, options: RequestInit = {}) => {
   if (response.status === 401) {
     const errorData = await response.json().catch(() => ({}));
     
-    // Si no es una ruta de login, redirigimos
     if (typeof window !== 'undefined' && !url.includes('/auth/')) {
       localStorage.clear();
       const path = window.location.pathname;
@@ -37,5 +36,16 @@ export const fetcher = async (url: string, options: RequestInit = {}) => {
     throw new Error(errorData.message || 'Error en la petición');
   }
 
-  return response.json();
+  // --- NUEVO: LEEMOS EL TEXTO PRIMERO Y VALIDAMOS SI ESTÁ VACÍO ---
+  const text = await response.text();
+  if (!text || text.trim() === '') {
+    return null; 
+  }
+
+  try {
+    return JSON.parse(text);
+  } catch (error) {
+    console.error("Error al parsear JSON:", text);
+    return null;
+  }
 };

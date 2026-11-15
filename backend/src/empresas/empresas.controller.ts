@@ -1,14 +1,15 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards } from '@nestjs/common';
 import { EmpresasService } from './empresas.service';
 import { CreateEmpresaDto } from './dto/create-empresa.dto';
 import { UpdateEmpresaDto } from './dto/update-empresa.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+// import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+// import { RolesGuard } from '../auth/roles.guard';
+// import { Roles } from '../auth/roles.decorator';
+// import { Rol } from '../usuarios/enums/rol.enum';
 
 @Controller('empresas')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('SUPER_ADMIN') // <-- Solo el Super Admin puede gestionar la tabla de empresas
+// @UseGuards(JwtAuthGuard, RolesGuard)
+// @Roles(Rol.SUPER_ADMIN)
 export class EmpresasController {
   constructor(private readonly empresasService: EmpresasService) {}
 
