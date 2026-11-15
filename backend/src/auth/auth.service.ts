@@ -1,6 +1,7 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from '../usuarios/usuarios.service';
+import { TwoFactorCryptoService } from './two-factor-crypto.service';
 import * as bcrypt from 'bcryptjs';
 import * as speakeasy from 'speakeasy';
 import { Rol } from '../usuarios/enums/rol.enum';
@@ -10,6 +11,7 @@ export class AuthService {
   constructor(
     private readonly usuariosService: UsuariosService,
     private readonly jwtService: JwtService,
+    private readonly twoFactorCrypto: TwoFactorCryptoService,
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -76,8 +78,9 @@ export class AuthService {
       if (!code2FA) {
         return { require2FA: true, message: 'Se requiere código de autenticación' };
       }
+      const secret = this.twoFactorCrypto.decrypt(user.twoFactorSecret);
       const verified = speakeasy.totp.verify({
-        secret: user.twoFactorSecret,
+        secret,
         encoding: 'base32',
         token: code2FA,
       });
@@ -103,8 +106,9 @@ export class AuthService {
       if (!code2FA) {
         throw new BadRequestException('Se requiere un código 2FA vigente para regenerar el secreto');
       }
+      const currentSecret = this.twoFactorCrypto.decrypt(user.twoFactorSecret);
       const verified = speakeasy.totp.verify({
-        secret: user.twoFactorSecret,
+        secret: currentSecret,
         encoding: 'base32',
         token: code2FA,
       });
@@ -115,7 +119,10 @@ export class AuthService {
 
     const secret = speakeasy.generateSecret({ name: `POS-ERP MASTER (${user.email})` });
 
-    await this.usuariosService.update(userId, { twoFactorSecret: secret.base32, twoFactorEnabled: false } as any);
+    await this.usuariosService.update(userId, {
+      twoFactorSecret: this.twoFactorCrypto.encrypt(secret.base32),
+      twoFactorEnabled: false
+    } as any);
 
     return {
       secret: secret.base32,
@@ -133,8 +140,9 @@ export class AuthService {
       throw new BadRequestException('No hay secreto 2FA generado. Por favor, recargá la página.');
     }
 
+    const secret = this.twoFactorCrypto.decrypt(user.twoFactorSecret);
     const verified = speakeasy.totp.verify({
-      secret: user.twoFactorSecret,
+      secret,
       encoding: 'base32',
       token: code2FA,
     });

@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
-import { IsArray, IsInt, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Length, Min, ValidateNested, IsIn, Matches } from 'class-validator';
+import { IsArray, IsInt, IsNumber, IsOptional, IsString, IsUUID, Min, ValidateNested, IsIn } from 'class-validator';
+import { IsCuit } from '../../common/validators/is-cuit.validator';
 
 export class CreatePedidoDetalleDto {
   @IsUUID()
@@ -71,7 +72,7 @@ export class CreatePedidoDto {
 
   @IsString()
   @IsOptional()
-  @Matches(/^\d{11}$/, { message: 'El CUIT debe tener exactamente 11 dígitos numéricos sin guiones' })
+  @IsCuit({ message: 'El CUIT debe tener 11 dígitos y un dígito verificador válido' })
   cuitFactura?: string;
 
   @IsString()

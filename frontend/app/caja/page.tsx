@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import toast from 'react-hot-toast';
 import { fetcher } from '../../lib/api';
+import { useAuth } from '../../context/AuthContext';
 
 interface Caja {
   id: string;
@@ -22,6 +23,8 @@ interface Resumen {
 
 export default function CajaPage() {
   const router = useRouter();
+  const { user, loading: authLoading } = useAuth();
+  
   const [caja, setCaja] = useState<Caja | null>(null);
   const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +52,7 @@ export default function CajaPage() {
         setResumen(res);
       }
     } catch (err: unknown) {
-      if (err instanceof Error && err.message !== 'Sesión expirada') {
+      if (err instanceof Error && err.message !== 'Sesión expirada o no autorizada.') {
         setError('No se pudo conectar con el servidor.');
       }
     } finally {
@@ -58,8 +61,10 @@ export default function CajaPage() {
   };
 
   useEffect(() => {
+    // Solo verificar caja si el AuthContext ya terminó de cargar y hay un usuario
+    if (authLoading || !user) return;
     verificarCaja();
-  }, []);
+  }, [authLoading, user]);
 
   const handleAbrirCaja = async () => {
     try {
@@ -70,7 +75,7 @@ export default function CajaPage() {
       });
       setCaja(nuevaCaja);
       toast.success('Caja abierta con éxito');
-      verificarCaja(); // Recargar resumen
+      verificarCaja();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al abrir la caja';
       setError(msg);
@@ -93,7 +98,7 @@ export default function CajaPage() {
       toast.success(`Movimiento de ${tipoMovimiento.toLowerCase()} registrado`);
       setMontoMovimiento('');
       setMotivoMovimiento('');
-      verificarCaja(); // Actualizar resumen
+      verificarCaja();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error al registrar movimiento';
       setError(msg);
@@ -119,6 +124,14 @@ export default function CajaPage() {
       toast.error(msg);
     }
   };
+
+  if (authLoading) return <div className="p-8 text-center">Verificando sesión...</div>;
+  if (!user) return null; // AuthProvider redirige
+  
+  // Solo ADMIN y CAJERO pueden ver esta pantalla
+  if (user.rol !== 'ADMIN' && user.rol !== 'CAJERO') {
+    return <div className="p-8 text-center text-red-600 font-bold">No tenés permiso para acceder a la caja.</div>;
+  }
 
   if (loading) return <div className="p-8 text-center">Cargando estado de la caja...</div>;
 

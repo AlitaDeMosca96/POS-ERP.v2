@@ -6,6 +6,9 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 
+import { JwtAuthGuard } from './auth/jwt-auth.guard';
+import { RolesGuard } from './auth/roles.guard';
+
 import { AuthModule } from './auth/auth.module';
 import { CajasModule } from './cajas/cajas.module';
 import { CampaniasModule } from './campanias/campanias.module';
@@ -45,7 +48,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
       password: process.env.DB_PASSWORD || 'postgres',
       database: process.env.DB_NAME || 'pos_erp',
       autoLoadEntities: true, 
-      synchronize: false, // <-- DESACTIVADO
+      synchronize: false,
     }),
     
     AuditoriaModule,
@@ -57,6 +60,14 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
   controllers: [AppController],
   providers: [
     AppService,
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,

@@ -39,19 +39,107 @@ export class PedidosService {
 
   private async revertirStockPedido(manager: EntityManager, pedido: Pedido) {
     for (const det of pedido.detalles) {
-      const receta = await manager.find(Receta, {
-        where: { producto: { id: det.producto.id } }, relations: { insumo: true }
-      });
-
-      if (receta.length > 0) {
-        for (const item of receta) {
-          const cantidadADevolver = Number(item.cantidad) * det.cantidad;
-          await manager.increment(Insumo, { id: item.insumo.id }, 'stock', cantidadADevolver);
+      if (Array.isArray(det.recetaSnapshot)) {
+        if (det.recetaSnapshot.length > 0) {
+          for (const item of det.recetaSnapshot) {
+            const cantidadADevolver = Number(item.cantidad) * det.cantidad;
+            await manager.increment(Insumo, { id: item.insumoId }, 'stock', cantidadADevolver);
+          }
+        } else {
+          await manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
         }
       } else {
-        await manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+        const receta = await manager.find(Receta, {
+          where: { producto: { id: det.producto.id } }, relations: { insumo: true }
+        });
+        if (receta.length > 0) {
+          for (const item of receta) {
+            const cantidadADevolver = Number(item.cantidad) * det.cantidad;
+            await manager.increment(Insumo, { id: item.insumo.id }, 'stock', cantidadADevolver);
+          }
+        } else {
+          await manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+        }
       }
     }
+  }
+
+  private async descontarStock(manager: EntityManager, empresaId: string, det: any) {
+    if (det.recetaSnapshot && det.recetaSnapshot.length > 0) {
+      for (const item of det.recetaSnapshot) {
+        const cantidadADescontar = Number(item.cantidad) * det.cantidad;
+        const insumoActual = await manager.findOne(Insumo, { where: { id: item.insumoId } });
+        if (!insumoActual || Number(insumoActual.stock) < cantidadADescontar) {
+          throw new BadRequestException(`Stock insuficiente del insumo ${item.nombre}`);
+        }
+        await manager.decrement(Insumo, { id: item.insumoId }, 'stock', cantidadADescontar);
+      }
+    } else {
+      const prodActual = await manager.findOne(Producto, { where: { id: det.producto.id, empresaId } });
+      if (!prodActual || Number(prodActual.stock) < det.cantidad) {
+        throw new BadRequestException(`Stock insuficiente del producto ${prodActual?.nombre}`);
+      }
+      await manager.decrement(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+    }
+  }
+
+  private async construirDetallesFinales(
+    manager: EntityManager,
+    empresaId: string,
+    detallesDto: any[]
+  ): Promise<{ detallesFinales: any[]; totalCalculado: Decimal }> {
+    let totalCalculado = new Decimal(0);
+    const detallesFinales = [];
+
+    for (const det of detallesDto) {
+      const producto = await manager.findOne(Producto, {
+        where: { id: det.productoId, empresaId }
+      });
+
+      if (!producto) throw new BadRequestException(`Producto ${det.productoId} no encontrado`);
+
+      let precioReal = new Decimal(producto.precio);
+      let notasFinales = det.notas || '';
+
+      if (det.modificadoresIds && det.modificadoresIds.length > 0) {
+        const modificadores = await manager.find(Modificadore, {
+          where: { id: In(det.modificadoresIds), productoId: producto.id }
+        });
+
+        if (modificadores.length !== det.modificadoresIds.length) {
+          throw new BadRequestException(`Uno o más modificadores no existen o no pertenecen al producto ${producto.nombre}`);
+        }
+
+        for (const mod of modificadores) {
+          precioReal = precioReal.plus(mod.precioExtra);
+          notasFinales += ` | + ${mod.nombre}`;
+        }
+      }
+
+      totalCalculado = totalCalculado.plus(precioReal.times(det.cantidad));
+
+      const receta = await manager.find(Receta, {
+        where: { producto: { id: producto.id } }, relations: { insumo: true }
+      });
+
+      const recetaSnapshot = receta.length > 0
+        ? receta.map(r => ({
+            insumoId: r.insumo.id,
+            nombre: r.insumo.nombre,
+            cantidad: Number(r.cantidad)
+          }))
+        : [];
+
+      detallesFinales.push({
+        cantidad: det.cantidad,
+        precioUnitario: precioReal.toNumber(),
+        notas: notasFinales.trim(),
+        producto: { id: producto.id },
+        recetaSnapshot
+      });
+    }
+
+    return { detallesFinales, totalCalculado };
   }
 
   async create(createPedidoDto: CreatePedidoDto, usuarioId: string, empresaId: string) {
@@ -60,44 +148,13 @@ export class PedidosService {
     await queryRunner.startTransaction();
 
     try {
-      let totalCalculado = new Decimal(0);
-      const detallesFinales = [];
+      const { detallesFinales, totalCalculado: subtotal } = await this.construirDetallesFinales(
+        queryRunner.manager,
+        empresaId,
+        createPedidoDto.detalles
+      );
 
-      for (const det of createPedidoDto.detalles) {
-        const producto = await queryRunner.manager.findOne(Producto, {
-          where: { id: det.productoId, empresaId }
-        });
-
-        if (!producto) throw new BadRequestException(`Producto ${det.productoId} no encontrado`);
-
-        let precioReal = new Decimal(producto.precio);
-        let notasFinales = det.notas || '';
-
-        if (det.modificadoresIds && det.modificadoresIds.length > 0) {
-          const modificadores = await queryRunner.manager.find(Modificadore, {
-            where: { id: In(det.modificadoresIds), productoId: producto.id }
-          });
-
-          if (modificadores.length !== det.modificadoresIds.length) {
-            throw new BadRequestException(`Uno o más modificadores no existen o no pertenecen al producto ${producto.nombre}`);
-          }
-
-          for (const mod of modificadores) {
-            precioReal = precioReal.plus(mod.precioExtra);
-            notasFinales += ` | + ${mod.nombre}`;
-          }
-        }
-
-        totalCalculado = totalCalculado.plus(precioReal.times(det.cantidad));
-
-        detallesFinales.push({
-          cantidad: det.cantidad,
-          precioUnitario: precioReal.toNumber(),
-          notas: notasFinales.trim(),
-          producto: { id: producto.id }
-        });
-      }
-
+      let totalCalculado = subtotal;
       if (createPedidoDto.costoEnvio) {
         totalCalculado = totalCalculado.plus(createPedidoDto.costoEnvio);
       }
@@ -171,27 +228,7 @@ export class PedidosService {
         }
 
         for (const det of detallesFinales) {
-          const recetaNueva = await queryRunner.manager.find(Receta, {
-            where: { producto: { id: det.producto.id } }, relations: { insumo: true }
-          });
-
-          if (recetaNueva.length > 0) {
-            for (const item of recetaNueva) {
-              const cantidadADescontar = Number(item.cantidad) * det.cantidad;
-              const insumoActual = await queryRunner.manager.findOne(Insumo, { where: { id: item.insumo.id } });
-              if (!insumoActual || Number(insumoActual.stock) < cantidadADescontar) {
-                throw new BadRequestException(`Stock insuficiente del insumo ${item.insumo.nombre}`);
-              }
-              await queryRunner.manager.decrement(Insumo, { id: item.insumo.id }, 'stock', cantidadADescontar);
-            }
-          } else {
-            const prodActual = await queryRunner.manager.findOne(Producto, { where: { id: det.producto.id } });
-            if (!prodActual || Number(prodActual.stock) < det.cantidad) {
-              throw new BadRequestException(`Stock insuficiente del producto ${prodActual?.nombre}`);
-            }
-            await queryRunner.manager.decrement(Producto, { id: det.producto.id }, 'stock', det.cantidad);
-          }
-
+          await this.descontarStock(queryRunner.manager, empresaId, det);
           await queryRunner.manager.save('PedidoDetalle', { ...det, pedidoId: pedidoExistente.id });
         }
 
@@ -213,26 +250,7 @@ export class PedidosService {
         }
 
         for (const det of detallesFinales) {
-          const receta = await queryRunner.manager.find(Receta, {
-            where: { producto: { id: det.producto.id } }, relations: { insumo: true }
-          });
-
-          if (receta.length > 0) {
-            for (const item of receta) {
-              const cantidadADescontar = Number(item.cantidad) * det.cantidad;
-              const insumoActual = await queryRunner.manager.findOne(Insumo, { where: { id: item.insumo.id } });
-              if (!insumoActual || Number(insumoActual.stock) < cantidadADescontar) {
-                throw new BadRequestException(`Stock insuficiente del insumo ${item.insumo.nombre}`);
-              }
-              await queryRunner.manager.decrement(Insumo, { id: item.insumo.id }, 'stock', cantidadADescontar);
-            }
-          } else {
-            const prodActual = await queryRunner.manager.findOne(Producto, { where: { id: det.producto.id } });
-            if (!prodActual || Number(prodActual.stock) < det.cantidad) {
-              throw new BadRequestException(`Stock insuficiente del producto ${prodActual?.nombre}`);
-            }
-            await queryRunner.manager.decrement(Producto, { id: det.producto.id }, 'stock', det.cantidad);
-          }
+          await this.descontarStock(queryRunner.manager, empresaId, det);
         }
 
         const pedidoNuevo = queryRunner.manager.create(Pedido, {
@@ -372,7 +390,13 @@ export class PedidosService {
 
   async update(id: string, updatePedidoDto: UpdatePedidoDto, empresaId: string) {
     await this.findOne(id, empresaId);
-    return this.pedidoRepository.update(id, updatePedidoDto);
+    const payload: Partial<Pedido> = {};
+    if (updatePedidoDto.estadoCocina !== undefined) payload.estadoCocina = updatePedidoDto.estadoCocina;
+    if (updatePedidoDto.estadoDelivery !== undefined) payload.estadoDelivery = updatePedidoDto.estadoDelivery;
+    if (Object.keys(payload).length === 0) {
+      return { success: true, unchanged: true };
+    }
+    return this.pedidoRepository.update(id, payload);
   }
 
   async remove(id: string, empresaId: string, usuarioId?: string) {

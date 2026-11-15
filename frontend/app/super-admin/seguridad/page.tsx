@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { fetcher } from '../../../lib/api';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { verificarSesion } from '../../../lib/auth';
+import { useAuth } from '../../../context/AuthContext';
 
 export default function SeguridadPage() {
+  const { user, loading: authLoading } = useAuth();
+  
   const [qrCode, setQrCode] = useState('');
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
@@ -14,23 +15,35 @@ export default function SeguridadPage() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
-
-  useEffect(() => {
-    const user = verificarSesion('SUPER_ADMIN');
-    if (!user) return;
-  }, [router]);
+  
+  // Estado para manejar la regeneración si el 2FA ya está activo en el servidor
+  const [requiresCurrentCode, setRequiresCurrentCode] = useState(false);
+  const [currentCode, setCurrentCode] = useState('');
 
   const generate2FA = async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await fetcher('/auth/2fa/generate', { method: 'POST' });
+      // Si el backend pide código previo, lo enviamos
+      const payload = requiresCurrentCode ? { code: currentCode } : {};
+      
+      const data = await fetcher('/auth/2fa/generate', { 
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+      
       setQrCode(data.otpauthUrl);
       setSecret(data.secret);
+      setRequiresCurrentCode(false);
+      setCurrentCode('');
     } catch (err: any) {
-      setError('Error al generar el código. Iniciá sesión de nuevo.');
-      if (err.message === 'Sesión expirada') router.push('/master-login');
+      // Si el backend rechaza porque ya hay un 2FA activo
+      if (err.message && err.message.includes('Se requiere un código 2FA')) {
+        setRequiresCurrentCode(true);
+        setError('Ingresá tu código actual de 6 dígitos para generar un nuevo secreto.');
+      } else {
+        setError('Error al generar el código. Iniciá sesión de nuevo.');
+      }
     } finally {
       setLoading(false);
     }
@@ -53,6 +66,9 @@ export default function SeguridadPage() {
       setLoading(false);
     }
   };
+
+  if (authLoading) return <div className="p-8 text-center text-[#d4af37] bg-[#0a0a0a] min-h-screen">Verificando sesión...</div>;
+  if (!user || user.rol !== 'SUPER_ADMIN') return null;
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] p-8 text-white font-sans">
@@ -82,9 +98,25 @@ export default function SeguridadPage() {
           ) : !qrCode ? (
             <div className="text-center py-10">
               <p className="text-gray-300 mb-6">El 2FA está desactivado. Te recomendamos activarlo para evitar accesos no autorizados.</p>
+              
+              {/* Input condicional para cuando el servidor requiere validar el código anterior */}
+              {requiresCurrentCode && (
+                <div className="mb-6 max-w-xs mx-auto">
+                  <label className="block text-sm text-gray-400 mb-2">Código Actual de 6 dígitos</label>
+                  <input
+                    type="text"
+                    value={currentCode}
+                    onChange={(e) => setCurrentCode(e.target.value)}
+                    className="w-full bg-[#0a0a0a] border border-[#2a2a2a] text-[#d4af37] p-4 rounded-xl focus:ring-1 focus:ring-[#d4af37] text-center text-2xl tracking-[0.5em] font-mono"
+                    placeholder="000000"
+                    maxLength={6}
+                  />
+                </div>
+              )}
+
               <button
                 onClick={generate2FA}
-                disabled={loading}
+                disabled={loading || (requiresCurrentCode && currentCode.length !== 6)}
                 className="bg-[#d4af37] text-[#0a0a0a] px-8 py-3 rounded-xl font-bold uppercase tracking-widest hover:bg-[#b8962e] transition-all shadow-[0_0_20px_rgba(212,175,55,0.2)] disabled:opacity-50"
               >
                 {loading ? 'Generando QR...' : 'Generar Código QR'}

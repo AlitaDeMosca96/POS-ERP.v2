@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { fetcher } from '../../../lib/api';
+import { useAuth } from '../../../context/AuthContext';
 
 export interface Categoria { id: string; nombre: string; }
 export interface Mesa { id: string; nombre: string; estado: string; }
@@ -11,7 +12,10 @@ export interface ItemCarrito extends Producto { cantidad: number; notas?: string
 
 export function usePOS() {
   const router = useRouter();
-  const sucursalActiva = typeof window !== 'undefined' ? localStorage.getItem('sucursalActiva') : '';
+  const { user } = useAuth();
+  
+  // Usamos la sucursal del usuario autenticado (viene del backend), no del localStorage
+  const sucursalActiva = user?.sucursalId || '';
 
   const [productos, setProductos] = useState<Producto[]>([]);
   const [categorias, setCategorias] = useState<Categoria[]>([]);
@@ -32,6 +36,9 @@ export function usePOS() {
   const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
   useEffect(() => {
+    // Si no hay usuario, no cargar nada (el AuthContext redirige)
+    if (!user) return;
+
     const cargarDatos = async () => {
       try {
         const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
@@ -52,7 +59,7 @@ export function usePOS() {
       }
     };
     cargarDatos();
-  }, [sucursalActiva]);
+  }, [sucursalActiva, user]);
 
   const handleMesaChange = async (nuevaMesaId: string) => {
     setMesaActivaId(nuevaMesaId);
@@ -111,13 +118,20 @@ export function usePOS() {
   const liberarMesaVacia = async () => {
     try {
       if (pedidoActualId) {
-        await fetcher(`/pedidos/${pedidoActualId}`, { method: 'PATCH', body: JSON.stringify({ estado: 'PAGADO' }) });
+        // CORREGIDO: Usamos anular, no PATCH estado. El DTO restringido ya no acepta estado.
+        await fetcher(`/pedidos/${pedidoActualId}/anular`, { 
+          method: 'PATCH', 
+          body: JSON.stringify({ motivo: 'Mesa liberada sin consumo' }) 
+        });
       }
       await fetcher(`/mesas/${mesaActivaId}`, { method: 'PATCH', body: JSON.stringify({ estado: 'LIBRE' }) });
       setMesaActivaId(''); setPedidoActualId(null);
+      
       const urlMesas = sucursalActiva ? `/mesas?sucursalId=${sucursalActiva}` : '/mesas';
       setMesas(await fetcher(urlMesas) || []);
-    } catch (error) { console.error(error); }
+    } catch (error) { 
+      console.error(error); 
+    }
   };
 
   const procesarPago = async (datosPago: any) => {

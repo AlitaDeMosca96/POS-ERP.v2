@@ -4,6 +4,7 @@ import { getRepositoryToken } from '@nestjs/typeorm';
 import { Caja } from './entities/caja.entity';
 import { MovimientoCaja } from './entities/movimiento-caja.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
+import { Sucursal } from '../sucursales/entities/sucursal.entity';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 
 describe('CajasService - Conciliación', () => {
@@ -11,14 +12,18 @@ describe('CajasService - Conciliación', () => {
   let cajaRepository: any;
   let movimientoRepository: any;
   let pedidoRepository: any;
+  let sucursalRepository: any;
 
   beforeEach(async () => {
     cajaRepository = {
       findOne: jest.fn(),
       save: jest.fn(),
+      create: jest.fn((x) => x),
     };
     movimientoRepository = {
       find: jest.fn(),
+      save: jest.fn(),
+      create: jest.fn((x) => x),
     };
     pedidoRepository = {
       createQueryBuilder: jest.fn().mockReturnValue({
@@ -28,6 +33,9 @@ describe('CajasService - Conciliación', () => {
         getRawOne: jest.fn().mockResolvedValue({ total: '1000' }),
       }),
     };
+    sucursalRepository = {
+      findOne: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
@@ -35,6 +43,7 @@ describe('CajasService - Conciliación', () => {
         { provide: getRepositoryToken(Caja), useValue: cajaRepository },
         { provide: getRepositoryToken(MovimientoCaja), useValue: movimientoRepository },
         { provide: getRepositoryToken(Pedido), useValue: pedidoRepository },
+        { provide: getRepositoryToken(Sucursal), useValue: sucursalRepository },
         { provide: AuditoriaService, useValue: { registrar: jest.fn() } },
       ],
     }).compile();
@@ -61,5 +70,12 @@ describe('CajasService - Conciliación', () => {
     expect(resumen.ventasEfectivo).toBe(1000);
     expect(resumen.ingresos).toBe(200);
     expect(resumen.egresos).toBe(50);
+  });
+
+  it('debería rechazar abrir caja en sucursal de otra empresa', async () => {
+    sucursalRepository.findOne.mockResolvedValue(null);
+
+    await expect(service.abrir('empresa-A', 'sucursal-B', 'usuario-1', 100))
+      .rejects.toThrow('La sucursal no existe o no pertenece a tu empresa');
   });
 });

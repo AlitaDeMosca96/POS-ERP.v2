@@ -1,17 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetcher } from '../../lib/api';
-import { verificarSesion } from '../../lib/auth';
+import { useAuth } from '../../context/AuthContext';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-
-interface Usuario {
-  id: string;
-  email: string;
-  rol: string;
-}
 
 interface Resumen {
   totalVentas: number;
@@ -21,16 +14,12 @@ interface Resumen {
 }
 
 export default function DashboardPage() {
-  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const { user, loading: authLoading, logout } = useAuth();
   const [resumen, setResumen] = useState<Resumen | null>(null);
-  const [loading, setLoading] = useState(true);
-  const router = useRouter();
+  const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
-    const user = verificarSesion();
-    if (!user) return;
-
-    setUsuario(user as Usuario);
+    if (authLoading || !user) return;
 
     fetcher('/reportes/resumen')
       .then((data) => {
@@ -38,24 +27,17 @@ export default function DashboardPage() {
       })
       .catch((err) => {
         console.error('Error cargando resumen:', err);
-        if (err.message === 'Sesión expirada') {
-          router.push('/');
-        }
       })
       .finally(() => {
-        setLoading(false);
+        setLoadingData(false);
       });
-  }, [router]);
+  }, [user, authLoading]);
 
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    router.push('/');
-  };
-
-  if (loading) {
+  if (authLoading || (user && loadingData)) {
     return <div className="min-h-screen flex items-center justify-center">Cargando dashboard...</div>;
   }
+
+  if (!user) return null;
 
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
@@ -65,13 +47,14 @@ export default function DashboardPage() {
         <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-lg shadow">
           <div>
             <h1 className="text-2xl font-bold text-gray-800">Dashboard</h1>
-            <p className="text-gray-500">Bienvenido, {usuario?.email} ({usuario?.rol})</p>
+            <p className="text-gray-500">Bienvenido, {user.email} ({user.rol})</p>
           </div>
           <div className="space-x-4">
             <Link href="/caja" className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
               Ir a Caja
             </Link>
-            <button onClick={handleLogout} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+            {/* CORREGIDO: Envuelto en función de flecha */}
+            <button onClick={() => logout()} className="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
               Cerrar Sesión
             </button>
           </div>

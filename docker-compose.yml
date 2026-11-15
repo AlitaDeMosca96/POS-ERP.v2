@@ -30,6 +30,7 @@ services:
       - DB_PASSWORD=${DB_PASSWORD:-postgres}
       - DB_NAME=${DB_NAME:-pos-erp-v2}
       - JWT_SECRET=${JWT_SECRET}
+      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY}
       - PORT=3000
       - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3001}
     depends_on:

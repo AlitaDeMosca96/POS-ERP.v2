@@ -1,22 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { fetcher } from '../../lib/api';
-import { verificarSesion } from '../../lib/auth';
+import { useAuth } from '../../context/AuthContext';
 
 export default function SuperAdminPage() {
-  const router = useRouter();
+  const { user, loading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [metrics, setMetrics] = useState<any>(null);
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Validar sesión exigiendo rol SUPER_ADMIN
-    const user = verificarSesion('SUPER_ADMIN');
-    if (!user) return;
+    if (authLoading || !user || user.rol !== 'SUPER_ADMIN') return;
 
     Promise.all([
       fetcher('/super-admin/metrics'),
@@ -28,20 +25,24 @@ export default function SuperAdminPage() {
       })
       .catch((err) => {
         console.error('Error cargando datos:', err);
-        if (err.message === 'Sesión expirada') {
-          router.push('/master-login');
-        }
       })
       .finally(() => {
         setLoading(false);
       });
-  }, [router]);
+  }, [user, authLoading]);
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('usuario');
-    router.push('/master-login');
+    logout('/master-login');
   };
+
+  if (authLoading) {
+    return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-[#d4af37]">Verificando sesión maestra...</div>;
+  }
+
+  // Protección de ruta
+  if (!user || user.rol !== 'SUPER_ADMIN') {
+    return null; // El AuthProvider redirige a /
+  }
 
   const renderContent = () => {
     if (loading) {
