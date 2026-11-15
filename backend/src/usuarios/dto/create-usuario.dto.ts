@@ -1,19 +1,19 @@
 import { IsEmail, IsEnum, IsNotEmpty, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
-import { Rol } from '../enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
+import { Rol } from '../enums/rol.enum';
 
 export class CreateUsuarioDto {
   @IsEmail({}, { message: 'Email inválido' })
   email: string;
 
   @IsString()
-  @MinLength(6, { message: 'La contraseña debe tener al menos 6 caracteres' })
+  @MinLength(10, { message: 'La contraseña debe tener al menos 10 caracteres' })
   password: string;
 
   @IsString()
   @IsNotEmpty()
   nombre: string;
 
-  @IsEnum(Rol) // <-- VALIDAMOS QUE SEA UN ROL VÁLIDO
+  @IsEnum(Rol)
   @IsOptional()
   rol?: Rol;
 

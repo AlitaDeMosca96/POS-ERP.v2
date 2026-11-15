@@ -15,8 +15,7 @@ export default function ClientesPage() {
   const [telefono, setTelefono] = useState('');
   const [email, setEmail] = useState('');
 
-  useEffect(() => { cargarClientes(); }, []);
-
+  // Función movida arriba del useEffect
   const cargarClientes = async () => {
     try {
       const data = await fetcher('/clientes');
@@ -28,6 +27,10 @@ export default function ClientesPage() {
     }
   };
 
+  useEffect(() => { 
+    cargarClientes(); 
+  }, []);
+
   const handleCrearCliente = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -38,7 +41,9 @@ export default function ClientesPage() {
       toast.success('Cliente registrado con éxito');
       setNombre(''); setTelefono(''); setEmail('');
       cargarClientes();
-    } catch (error: any) { toast.error(error.message || 'Error al registrar el cliente'); }
+    } catch (error: unknown) { 
+      toast.error(error instanceof Error ? error.message : 'Error al registrar el cliente'); 
+    }
   };
 
   if (loading) return <div className="p-10 text-center">Cargando...</div>;

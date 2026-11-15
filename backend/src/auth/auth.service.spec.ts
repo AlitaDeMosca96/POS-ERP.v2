@@ -3,18 +3,18 @@ import { AuthService } from './auth.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { JwtService } from '@nestjs/jwt';
 import { UnauthorizedException } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
+import * as bcrypt from 'bcryptjs';
 
 describe('AuthService', () => {
   let authService: AuthService;
   let usuariosService: UsuariosService;
 
-  // Mock de UsuariosService
   const mockUsuariosService = {
     findByEmail: jest.fn(),
+    resetearIntentosFallidos: jest.fn(),
+    registrarIntentoFallido: jest.fn(),
   };
 
-  // Mock de JwtService
   const mockJwtService = {
     sign: jest.fn().mockReturnValue('token_falso_123'),
   };
@@ -34,28 +34,33 @@ describe('AuthService', () => {
 
   it('debería lanzar UnauthorizedException si el usuario no existe', async () => {
     mockUsuariosService.findByEmail.mockResolvedValue(null);
-    await expect(authService.login({ email: 'no@existe.com', password: '123' }))
-      .rejects.toThrow(UnauthorizedException);
+    const resultado = await authService.validateUser('no@existe.com', '123');
+    expect(resultado).toBeNull();
   });
 
-  it('debería lanzar UnauthorizedException si la contraseña es incorrecta', async () => {
+  it('debería retornar null si la contraseña es incorrecta', async () => {
     const hashIncorrecto = await bcrypt.hash('otra_clave', 10);
     mockUsuariosService.findByEmail.mockResolvedValue({ 
       password: hashIncorrecto, 
-      rol: 'ADMIN' 
+      rol: 'ADMIN',
+      intentosFallidos: 0,
+      bloqueadoHasta: null,
     });
     
-    await expect(authService.login({ email: 'test@test.com', password: 'clave_mala' }))
-      .rejects.toThrow(UnauthorizedException);
+    const resultado = await authService.validateUser('test@test.com', 'clave_mala');
+    expect(resultado).toBeNull();
   });
 
-  it('debería devolver un token si las credenciales son correctas', async () => {
+  it('debería devolver el usuario si las credenciales son correctas', async () => {
     const hashCorrecto = await bcrypt.hash('clave_buena', 10);
     mockUsuariosService.findByEmail.mockResolvedValue({ 
-      id: '123', email: 'test@test.com', password: hashCorrecto, rol: 'ADMIN', empresaId: 'emp-1' 
+      id: '123', email: 'test@test.com', password: hashCorrecto, rol: 'ADMIN', empresaId: 'emp-1',
+      intentosFallidos: 0,
+      bloqueadoHasta: null,
     });
     
-    const resultado = await authService.login({ email: 'test@test.com', password: 'clave_buena' });
-    expect(resultado.access_token).toBe('token_falso_123');
+    const resultado = await authService.validateUser('test@test.com', 'clave_buena');
+    expect(resultado).toBeDefined();
+    expect(resultado.email).toBe('test@test.com');
   });
 });

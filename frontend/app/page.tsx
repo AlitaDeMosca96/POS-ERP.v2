@@ -29,8 +29,9 @@ export default function LoginPage() {
       } else {
         setError('El servidor no devolvió los datos correctamente.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Credenciales inválidas.');
+    } catch (err: unknown) {
+      console.error(err);
+      setError(err instanceof Error ? err.message : 'Credenciales inválidas.');
     } finally {
       setLoading(false);
     }
@@ -39,7 +40,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100">
       <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">POS-ERP Clientes</h1>
+        <h1 className="text-2xl font-bold text-center mb-6 text-gray-800">POS-ERP</h1>
         
         {error && (
           <div className="bg-red-100 text-red-700 p-3 rounded mb-4 text-sm font-semibold">

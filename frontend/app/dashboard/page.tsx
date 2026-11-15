@@ -7,18 +7,30 @@ import { fetcher } from '../../lib/api';
 import { verificarSesion } from '../../lib/auth';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
+interface Usuario {
+  id: string;
+  email: string;
+  rol: string;
+}
+
+interface Resumen {
+  totalVentas: number;
+  cantidadPedidos: number;
+  metodosPago: { name: string; value: number }[];
+  topProductos: { nombre: string; cantidad: number; total: number }[];
+}
+
 export default function DashboardPage() {
-  const [usuario, setUsuario] = useState<any>(null);
-  const [resumen, setResumen] = useState<any>(null);
+  const [usuario, setUsuario] = useState<Usuario | null>(null);
+  const [resumen, setResumen] = useState<Resumen | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    // Validar sesión leyendo el JWT real
     const user = verificarSesion();
     if (!user) return;
 
-    setUsuario(user);
+    setUsuario(user as Usuario);
 
     fetcher('/reportes/resumen')
       .then((data) => {
@@ -84,7 +96,7 @@ export default function DashboardPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-600 mb-4">Ventas por Método de Pago</h2>
             <div className="h-64">
-              {resumen?.metodosPago?.length > 0 ? (
+              {resumen?.metodosPago?.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
@@ -96,7 +108,7 @@ export default function DashboardPage() {
                       outerRadius={80}
                       label
                     >
-                      {resumen.metodosPago.map((entry: any, index: number) => (
+                      {resumen.metodosPago.map((entry, index: number) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
@@ -112,7 +124,7 @@ export default function DashboardPage() {
           <div className="bg-white p-6 rounded-lg shadow">
             <h2 className="text-lg font-semibold text-gray-600 mb-4">Top 5 Productos</h2>
             <div className="h-64">
-              {resumen?.topProductos?.length > 0 ? (
+              {resumen?.topProductos?.length ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={resumen.topProductos}>
                     <XAxis dataKey="nombre" />

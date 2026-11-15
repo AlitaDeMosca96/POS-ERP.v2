@@ -33,8 +33,8 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Post('2fa/generate')
-  async generate2FA(@Req() req: RequestWithUser) {
-    return this.authService.generateTwoFactorAuthenticationSecret(req.user.id);
+  async generate2FA(@Req() req: RequestWithUser, @Body('code') code?: string) {
+    return this.authService.generateTwoFactorAuthenticationSecret(req.user.id, code);
   }
 
   @UseGuards(JwtAuthGuard)

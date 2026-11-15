@@ -1,9 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, DeleteDateColumn, Index } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 import { Rol } from '../enums/rol.enum';
 
 @Entity('usuarios')
+@Index(['empresaId'])
+@Index(['sucursalId'])
 export class Usuario {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -43,7 +45,6 @@ export class Usuario {
   @Column({ type: 'boolean', default: false })
   twoFactorEnabled: boolean;
 
-  // CAMPOS PARA BLOQUEO DE CUENTA
   @Column({ type: 'int', default: 0 })
   intentosFallidos: number;
 

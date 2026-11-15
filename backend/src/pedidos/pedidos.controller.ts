@@ -4,25 +4,33 @@ import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { AnularPedidoDto } from './dto/anular-pedido.dto';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Rol } from '../usuarios/enums/rol.enum';
 import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 
 @Controller('pedidos')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
 export class PedidosController {
   constructor(private readonly pedidosService: PedidosService) {}
 
   @Post()
   create(@Body() createPedidoDto: CreatePedidoDto, @Req() req: RequestWithUser) {
-    createPedidoDto.empresaId = req.user.empresaId; 
+    createPedidoDto.empresaId = req.user.empresaId;
     const targetSucursal = req.user.sucursalId || createPedidoDto.sucursalId;
     if (targetSucursal) createPedidoDto.sucursalId = targetSucursal;
-    return this.pedidosService.create(createPedidoDto, req.user.id, req.user.empresaId); 
+    return this.pedidosService.create(createPedidoDto, req.user.id, req.user.empresaId);
   }
 
   @Get()
-  findAll(@Req() req: RequestWithUser, @Query('sucursalId') querySucursalId?: string) {
+  findAll(
+    @Req() req: RequestWithUser,
+    @Query('sucursalId') querySucursalId?: string,
+    @Query('page') page: string = '1',
+    @Query('limit') limit: string = '50'
+  ) {
     const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
-    return this.pedidosService.findAll(req.user.empresaId, targetSucursal);
+    return this.pedidosService.findAll(req.user.empresaId, targetSucursal, Number(page), Number(limit));
   }
 
   @Get('cocina')
@@ -68,6 +76,7 @@ export class PedidosController {
   }
 
   @Delete(':id')
+  @Roles(Rol.ADMIN)
   remove(@Param('id') id: string, @Req() req: RequestWithUser) {
     return this.pedidosService.remove(id, req.user.empresaId);
   }

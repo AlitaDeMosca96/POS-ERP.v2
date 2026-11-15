@@ -14,7 +14,7 @@ export class AuthService {
 
   async validateUser(email: string, pass: string): Promise<any> {
     const user = await this.usuariosService.findByEmail(email);
-    
+
     if (!user) return null;
 
     if (user.bloqueadoHasta && user.bloqueadoHasta > new Date()) {
@@ -26,28 +26,28 @@ export class AuthService {
     }
 
     const isMatch = await bcrypt.compare(pass, user.password);
-    
+
     if (!isMatch) {
       await this.usuariosService.registrarIntentoFallido(email);
       return null;
     }
 
     await this.usuariosService.resetearIntentosFallidos(email);
-    
+
     const { password, twoFactorSecret, intentosFallidos, bloqueadoHasta, ...result } = user;
     return result;
   }
 
   async login(user: any, isImpersonation: boolean = false) {
-    const payload = { 
-      email: user.email, 
-      sub: user.id, 
-      rol: user.rol, 
-      empresaId: user.empresaId, 
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      rol: user.rol,
+      empresaId: user.empresaId,
       sucursalId: user.sucursalId,
       isImpersonation
     };
-    
+
     return {
       access_token: this.jwtService.sign(payload),
       user: { id: user.id, email: user.email, rol: user.rol, empresaId: user.empresaId }
@@ -56,7 +56,7 @@ export class AuthService {
 
   async masterLogin(email: string, pass: string, code2FA?: string) {
     const user = await this.usuariosService.findByEmail(email);
-    
+
     if (!user || user.rol !== Rol.SUPER_ADMIN) {
       throw new UnauthorizedException('Credenciales inválidas o no es Super Admin');
     }
@@ -64,9 +64,9 @@ export class AuthService {
     if (user.bloqueadoHasta && user.bloqueadoHasta > new Date()) {
       throw new UnauthorizedException(`Cuenta bloqueada. Intente de nuevo después de las ${user.bloqueadoHasta.toLocaleTimeString()}`);
     }
-    
+
     const isMatch = await bcrypt.compare(pass, user.password);
-    
+
     if (!isMatch) {
       await this.usuariosService.registrarIntentoFallido(email);
       throw new UnauthorizedException('Credenciales inválidas');
@@ -92,12 +92,29 @@ export class AuthService {
     return this.login(user);
   }
 
-  async generateTwoFactorAuthenticationSecret(userId: string) {
-    const user = await this.usuariosService.findOne(userId);
+  async generateTwoFactorAuthenticationSecret(userId: string, code2FA?: string) {
+    const baseUser = await this.usuariosService.findOne(userId);
+    if (!baseUser) throw new UnauthorizedException('Usuario no encontrado');
+
+    const user = await this.usuariosService.findByEmail(baseUser.email);
     if (!user) throw new UnauthorizedException('Usuario no encontrado');
 
+    if (user.twoFactorEnabled) {
+      if (!code2FA) {
+        throw new BadRequestException('Se requiere un código 2FA vigente para regenerar el secreto');
+      }
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: code2FA,
+      });
+      if (!verified) {
+        throw new UnauthorizedException('Código 2FA inválido o expirado');
+      }
+    }
+
     const secret = speakeasy.generateSecret({ name: `POS-ERP MASTER (${user.email})` });
-    
+
     await this.usuariosService.update(userId, { twoFactorSecret: secret.base32, twoFactorEnabled: false } as any);
 
     return {
@@ -107,8 +124,11 @@ export class AuthService {
   }
 
   async turnOnTwoFactorAuthentication(userId: string, code2FA: string) {
-    const user = await this.usuariosService.findByEmail((await this.usuariosService.findOne(userId)).email);
-    
+    const baseUser = await this.usuariosService.findOne(userId);
+    if (!baseUser) throw new UnauthorizedException('Usuario no encontrado');
+
+    const user = await this.usuariosService.findByEmail(baseUser.email);
+
     if (!user || !user.twoFactorSecret) {
       throw new BadRequestException('No hay secreto 2FA generado. Por favor, recargá la página.');
     }

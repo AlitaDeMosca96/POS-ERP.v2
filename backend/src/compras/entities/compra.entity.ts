@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { Proveedore } from '../../proveedores/entities/proveedore.entity';
 import { CompraDetalle } from './compra-detalle.entity';
@@ -24,6 +24,12 @@ export class Compra {
 
   @Column('uuid')
   proveedorId: string;
+
+  @Column({ type: 'boolean', default: false })
+  pagada: boolean;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   fecha: Date;

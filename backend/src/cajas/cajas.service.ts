@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import Decimal from 'decimal.js'; // <-- NUEVO
+import Decimal from 'decimal.js';
 import { Caja } from './entities/caja.entity';
 import { MovimientoCaja } from './entities/movimiento-caja.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
+import { Sucursal } from '../sucursales/entities/sucursal.entity';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 
 @Injectable()
@@ -16,17 +17,30 @@ export class CajasService {
     private readonly movimientoRepository: Repository<MovimientoCaja>,
     @InjectRepository(Pedido)
     private readonly pedidoRepository: Repository<Pedido>,
+    @InjectRepository(Sucursal)
+    private readonly sucursalRepository: Repository<Sucursal>,
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
   async obtenerCajaAbierta(empresaId: string, sucursalId?: string) {
-    if (!sucursalId) return null; 
+    if (!sucursalId) return null;
     return this.cajaRepository.findOne({
       where: { empresaId, sucursalId, estado: 'ABIERTA' },
     });
   }
 
   async abrir(empresaId: string, sucursalId: string, usuarioId: string, montoInicial: number) {
+    if (!sucursalId) {
+      throw new BadRequestException('Se requiere sucursalId para abrir una caja');
+    }
+
+    const sucursal = await this.sucursalRepository.findOne({
+      where: { id: sucursalId, empresaId }
+    });
+    if (!sucursal) {
+      throw new BadRequestException('La sucursal no existe o no pertenece a tu empresa');
+    }
+
     const cajaExistente = await this.obtenerCajaAbierta(empresaId, sucursalId);
     if (cajaExistente) throw new BadRequestException('Ya hay una caja abierta en esta sucursal');
 
@@ -59,18 +73,17 @@ export class CajasService {
       .getRawOne();
 
     const movimientos = await this.movimientoRepository.find({ where: { cajaId: caja.id } });
-    
-    let ingresos = new Decimal(0); // <-- DECIMAL
-    let egresos = new Decimal(0); // <-- DECIMAL
+
+    let ingresos = new Decimal(0);
+    let egresos = new Decimal(0);
 
     movimientos.forEach(mov => {
       if (mov.tipo === 'INGRESO') ingresos = ingresos.plus(mov.monto);
       if (mov.tipo === 'EGRESO') egresos = egresos.plus(mov.monto);
     });
 
-    const totalVentasEfectivo = new Decimal(ventas?.total || 0); // <-- DECIMAL
-    
-    // Cálculo exacto
+    const totalVentasEfectivo = new Decimal(ventas?.total || 0);
+
     const saldoEsperado = new Decimal(caja.montoInicial)
       .plus(totalVentasEfectivo)
       .plus(ingresos)
@@ -109,7 +122,7 @@ export class CajasService {
     if (!caja) throw new NotFoundException('Caja no encontrada o ya cerrada');
 
     const resumen = await this.obtenerResumen(cajaId, empresaId);
-    
+
     const datosAnteriores = { estado: caja.estado, saldoEsperado: caja.saldoEsperado };
 
     caja.saldoEsperado = resumen.saldoEsperado;
@@ -117,7 +130,7 @@ export class CajasService {
     caja.usuarioCierreId = usuarioId;
     caja.estado = 'CERRADA';
     caja.fechaCierre = new Date();
-    
+
     const cajaCerrada = await this.cajaRepository.save(caja);
 
     await this.auditoriaService.registrar(

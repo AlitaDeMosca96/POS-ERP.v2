@@ -1,4 +1,4 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, OneToMany, Index, DeleteDateColumn } from 'typeorm';
 import { Empresa } from '../../empresas/entities/empresa.entity';
 import { PedidoDetalle } from './pedido-detalle.entity';
 import { Mesa } from '../../mesas/entities/mesa.entity';
@@ -7,6 +7,10 @@ import { Cliente } from '../../clientes/entities/cliente.entity';
 import { Sucursal } from '../../sucursales/entities/sucursal.entity';
 
 @Entity('pedidos')
+@Index(['empresaId', 'createdAt'])
+@Index(['sucursalId'])
+@Index(['estado'])
+@Index(['cajaId'])
 export class Pedido {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -47,7 +51,6 @@ export class Pedido {
   @Column({ type: 'varchar', nullable: true })
   caeSimulado: string | null;
 
-  // CAMPOS PARA AUDITORÍA DE ANULACIÓN
   @Column({ type: 'varchar', nullable: true })
   motivoAnulacion: string | null;
 
@@ -91,6 +94,9 @@ export class Pedido {
 
   @Column('uuid', { nullable: true })
   clienteId: string;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;

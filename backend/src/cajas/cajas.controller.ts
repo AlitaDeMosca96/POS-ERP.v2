@@ -1,13 +1,17 @@
 import { Controller, Get, Post, Body, Patch, Req, UseGuards, NotFoundException } from '@nestjs/common';
 import { CajasService } from './cajas.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Rol } from '../usuarios/enums/rol.enum';
 import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 import { AbrirCajaDto } from './dto/abrir-caja.dto';
 import { CerrarCajaDto } from './dto/cerrar-caja.dto';
 import { CreateMovimientoDto } from './dto/create-movimiento.dto';
 
 @Controller('cajas')
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Rol.ADMIN, Rol.CAJERO)
 export class CajasController {
   constructor(private readonly cajasService: CajasService) {}
 

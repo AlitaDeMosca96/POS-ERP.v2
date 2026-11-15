@@ -28,8 +28,7 @@ export default function ProductosPage() {
   const [nuevoInsumoId, setNuevoInsumoId] = useState('');
   const [nuevaCantidad, setNuevaCantidad] = useState('1');
 
-  useEffect(() => { cargarDatos(); }, []);
-
+  // Función movida arriba del useEffect
   const cargarDatos = async () => {
     try {
       const [prods, cats, inss] = await Promise.all([
@@ -47,6 +46,10 @@ export default function ProductosPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => { 
+    cargarDatos(); 
+  }, []);
 
   const handleCrearCategoria = async () => {
     const nombreCat = prompt('Ingrese el nombre de la nueva categoría:');
@@ -68,7 +71,9 @@ export default function ProductosPage() {
       toast.success('Producto creado con éxito');
       setNombre(''); setPrecio(''); setCosto(''); setStock('');
       cargarDatos();
-    } catch (error: any) { toast.error(error.message || 'Error al crear el producto'); }
+    } catch (error: unknown) { 
+      toast.error(error instanceof Error ? error.message : 'Error al crear el producto'); 
+    }
   };
 
   const abrirModalReceta = async (prod: Producto) => {
@@ -90,7 +95,9 @@ export default function ProductosPage() {
       const resRec = await fetcher(`/recetas/producto/${productoReceta.id}`);
       setRecetaActual(resRec || []);
       setNuevaCantidad('1');
-    } catch (error: any) { toast.error(error.message || 'Error al agregar insumo'); }
+    } catch (error: unknown) { 
+      toast.error(error instanceof Error ? error.message : 'Error al agregar insumo'); 
+    }
   };
 
   const handleEliminarInsumo = async (recetaId: string) => {

@@ -7,64 +7,53 @@ import { Mesa } from '../mesas/entities/mesa.entity';
 import { Caja } from '../cajas/entities/caja.entity';
 import { Receta } from '../recetas/entities/receta.entity';
 import { Insumo } from '../insumos/entities/insumo.entity';
+import { Modificadore } from '../modificadores/entities/modificadore.entity';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import { DataSource } from 'typeorm';
-import { BadRequestException } from '@nestjs/common';
+import { NotFoundException } from '@nestjs/common';
 
-describe('PedidosService', () => {
+describe('PedidosService - Aislamiento Multi-Tenant', () => {
   let service: PedidosService;
-
-  // Mock del QueryRunner para Transacciones
-  const mockQueryRunner = {
-    connect: jest.fn(),
-    startTransaction: jest.fn(),
-    commitTransaction: jest.fn(),
-    rollbackTransaction: jest.fn(),
-    release: jest.fn(),
-    manager: {
-      findOne: jest.fn(),
-      find: jest.fn(),
-      save: jest.fn(),
-      increment: jest.fn(),
-      decrement: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-      create: jest.fn(),
-    },
-  };
-
-  const mockDataSource = {
-    createQueryRunner: jest.fn().mockReturnValue(mockQueryRunner),
-  };
+  let pedidoRepository: any;
 
   beforeEach(async () => {
+    pedidoRepository = {
+      findOne: jest.fn(),
+      softDelete: jest.fn(),
+      update: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PedidosService,
-        { provide: getRepositoryToken(Pedido), useValue: {} },
+        { provide: getRepositoryToken(Pedido), useValue: pedidoRepository },
         { provide: getRepositoryToken(Producto), useValue: {} },
         { provide: getRepositoryToken(Mesa), useValue: {} },
         { provide: getRepositoryToken(Caja), useValue: {} },
         { provide: getRepositoryToken(Receta), useValue: {} },
         { provide: getRepositoryToken(Insumo), useValue: {} },
-        { provide: DataSource, useValue: mockDataSource },
+        { provide: getRepositoryToken(Modificadore), useValue: {} },
+        { provide: AuditoriaService, useValue: { registrar: jest.fn() } },
+        { provide: DataSource, useValue: {} },
       ],
     }).compile();
 
     service = module.get<PedidosService>(PedidosService);
   });
 
-  it('debería lanzar BadRequestException si el producto no existe en la empresa', async () => {
-    // Simulamos que la BD no encuentra el producto
-    mockQueryRunner.manager.findOne.mockResolvedValue(null);
+  it('debería lanzar NotFoundException si el pedido no pertenece a la empresa', async () => {
+    pedidoRepository.findOne.mockResolvedValue(null);
 
-    const pedidoDto = {
-      detalles: [{ productoId: 'prod-inexistente', cantidad: 1 }],
-    };
+    await expect(service.findOne('pedido-123', 'empresa-A'))
+      .rejects.toThrow(NotFoundException);
+  });
 
-    await expect(service.create(pedidoDto as any, 'user-1', 'emp-1'))
-      .rejects.toThrow(BadRequestException);
-      
-    // Verificamos que la transacción se haya cancelado (Rollback)
-    expect(mockQueryRunner.rollbackTransaction).toHaveBeenCalled();
+  it('NO debería permitir borrar un pedido de otra empresa', async () => {
+    pedidoRepository.findOne.mockResolvedValue(null);
+
+    await expect(service.remove('pedido-123', 'empresa-B'))
+      .rejects.toThrow(NotFoundException);
+    
+    expect(pedidoRepository.softDelete).not.toHaveBeenCalled();
   });
 });

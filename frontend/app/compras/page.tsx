@@ -20,8 +20,7 @@ export default function ComprasPage() {
   const [costoUnitario, setCostoUnitario] = useState('');
   const [carrito, setCarrito] = useState<ItemCompra[]>([]);
 
-  useEffect(() => { cargarDatos(); }, []);
-
+  // Función movida arriba del useEffect
   const cargarDatos = async () => {
     try {
       const [provs, inss] = await Promise.all([fetcher('/proveedores'), fetcher('/insumos')]);
@@ -38,6 +37,10 @@ export default function ComprasPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => { 
+    cargarDatos(); 
+  }, []);
 
   const handleInsumoChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const id = e.target.value;
@@ -73,10 +76,10 @@ export default function ComprasPage() {
     if (carrito.length === 0) return toast.error('Agregá al menos un insumo');
 
     try {
+      // OJO: Ya no enviamos 'total' porque el backend lo calcula por seguridad (Punto 11 auditoría)
       await fetcher('/compras', {
         method: 'POST',
         body: JSON.stringify({
-          total: calcularTotal(),
           proveedorId,
           detalles: carrito.map(item => ({ insumoId: item.insumoId, cantidad: item.cantidad, costoUnitario: item.costoUnitario }))
         })
@@ -85,7 +88,9 @@ export default function ComprasPage() {
       setCarrito([]);
       const inss = await fetcher('/insumos');
       setInsumos(inss || []);
-    } catch (error: any) { toast.error(error.message || 'Error al registrar la compra'); }
+    } catch (error: unknown) { 
+      toast.error(error instanceof Error ? error.message : 'Error al registrar la compra'); 
+    }
   };
 
   if (loading) return <div className="p-10 text-center">Cargando...</div>;

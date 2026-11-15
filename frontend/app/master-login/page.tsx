@@ -38,8 +38,8 @@ export default function MasterLoginPage() {
         localStorage.setItem('usuario', JSON.stringify(data.user));
         router.push('/super-admin');
       }
-    } catch (err: any) {
-      setError(err.message || 'Credenciales inválidas.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Credenciales inválidas.');
     } finally {
       setLoading(false);
     }
@@ -47,12 +47,10 @@ export default function MasterLoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] relative overflow-hidden font-sans">
-      {/* Efectos de fondo premium */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#d4af37] opacity-[0.03] blur-[120px] rounded-full"></div>
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-[#d4af37] opacity-[0.03] blur-[120px] rounded-full"></div>
 
       <div className="relative z-10 bg-[#121212]/80 backdrop-blur-xl p-10 rounded-2xl shadow-[0_0_50px_rgba(212,175,55,0.05)] w-full max-w-md border border-[#2a2a2a]">
-        
         <div className="text-center mb-10">
           <div className="mx-auto w-20 h-20 bg-gradient-to-br from-[#d4af37] to-[#8c6b1d] rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_20px_rgba(212,175,55,0.3)]">
             <span className="text-4xl text-[#0a0a0a] font-serif font-bold">M</span>

@@ -16,8 +16,7 @@ export default function InsumosPage() {
   const [stock, setStock] = useState('');
   const [costo, setCosto] = useState('');
 
-  useEffect(() => { cargarInsumos(); }, []);
-
+  // Función movida arriba del useEffect
   const cargarInsumos = async () => {
     try {
       const data = await fetcher('/insumos');
@@ -29,6 +28,10 @@ export default function InsumosPage() {
     }
   };
 
+  useEffect(() => { 
+    cargarInsumos(); 
+  }, []);
+
   const handleCrearInsumo = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -39,7 +42,9 @@ export default function InsumosPage() {
       toast.success('Insumo creado con éxito');
       setNombre(''); setUnidadMedida('UNIDAD'); setStock(''); setCosto('');
       cargarInsumos();
-    } catch (error: any) { toast.error(error.message || 'Error al crear el insumo'); }
+    } catch (error: unknown) { 
+      toast.error(error instanceof Error ? error.message : 'Error al crear el insumo'); 
+    }
   };
 
   if (loading) return <div className="p-10 text-center">Cargando...</div>;

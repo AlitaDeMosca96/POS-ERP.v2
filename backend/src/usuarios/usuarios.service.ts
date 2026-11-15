@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import * as bcrypt from 'bcryptjs';
 import { CreateUsuarioDto } from './dto/create-usuario.dto';
 import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { Usuario } from './entities/usuario.entity';
@@ -13,28 +14,32 @@ export class UsuariosService {
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto) {
-    const usuario = this.usuarioRepository.create(createUsuarioDto);
+    const hashedPassword = await bcrypt.hash(createUsuarioDto.password, 10);
+    const usuario = this.usuarioRepository.create({
+      ...createUsuarioDto,
+      password: hashedPassword,
+    });
     return this.usuarioRepository.save(usuario);
   }
 
   async findAll(empresaId?: string) {
     const where: any = {};
     if (empresaId) where.empresaId = empresaId;
-    return this.usuarioRepository.find({ 
+    return this.usuarioRepository.find({
       where,
-      select: { id: true, email: true, rol: true, activo: true, empresaId: true, sucursalId: true } 
+      select: { id: true, email: true, rol: true, activo: true, empresaId: true, sucursalId: true }
     });
   }
 
   async findOne(id: string, empresaId?: string) {
     const where: any = { id };
     if (empresaId) where.empresaId = empresaId;
-    
-    const usuario = await this.usuarioRepository.findOne({ 
+
+    const usuario = await this.usuarioRepository.findOne({
       where,
-      relations: { empresa: true }, // <-- AGREGADO PARA VALIDAR EMPRESA ACTIVA
-      select: { 
-        id: true, email: true, rol: true, activo: true, 
+      relations: { empresa: true },
+      select: {
+        id: true, email: true, rol: true, activo: true,
         empresaId: true, sucursalId: true, intentosFallidos: true, bloqueadoHasta: true
       }
     });
@@ -43,10 +48,10 @@ export class UsuariosService {
   }
 
   async findByEmail(email: string) {
-    return this.usuarioRepository.findOne({ 
+    return this.usuarioRepository.findOne({
       where: { email },
-      select: { 
-        id: true, email: true, password: true, rol: true, activo: true, 
+      select: {
+        id: true, email: true, password: true, rol: true, activo: true,
         empresaId: true, sucursalId: true, twoFactorSecret: true, twoFactorEnabled: true,
         intentosFallidos: true, bloqueadoHasta: true
       }
@@ -54,8 +59,14 @@ export class UsuariosService {
   }
 
   async update(id: string, updateUsuarioDto: UpdateUsuarioDto, empresaId?: string) {
-    const usuario = await this.findOne(id, empresaId); 
-    await this.usuarioRepository.update(usuario.id, updateUsuarioDto);
+    const usuario = await this.findOne(id, empresaId);
+
+    const payload: any = { ...updateUsuarioDto };
+    if (payload.password) {
+      payload.password = await bcrypt.hash(payload.password, 10);
+    }
+
+    await this.usuarioRepository.update(usuario.id, payload);
     return this.findOne(usuario.id, empresaId);
   }
 

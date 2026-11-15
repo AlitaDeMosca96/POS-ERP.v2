@@ -1,6 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, Index, DeleteDateColumn } from 'typeorm';
 
 @Entity('cajas')
+@Index(['empresaId', 'sucursalId'])
+@Index(['estado'])
 export class Caja {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -31,6 +33,9 @@ export class Caja {
 
   @Column({ nullable: true })
   fechaCierre: Date;
+
+  @DeleteDateColumn()
+  deletedAt: Date;
 
   @CreateDateColumn()
   createdAt: Date;
