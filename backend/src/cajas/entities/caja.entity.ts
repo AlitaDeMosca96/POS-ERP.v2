@@ -1,49 +1,39 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Empresa } from '../../empresas/entities/empresa.entity';
-import { Usuario } from '../../usuarios/entities/usuario.entity';
-import { Sucursal } from '../../sucursales/entities/sucursal.entity'; // <-- NUEVO
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn } from 'typeorm';
 
 @Entity('cajas')
 export class Caja {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  saldoInicial: number;
-
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  saldoFinal: number;
-
-  @Column({ type: 'varchar', default: 'ABIERTA' })
-  estado: string;
-
-  @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
-  empresa: Empresa;
-
-  @Column('uuid')
+  @Column({ nullable: true })
   empresaId: string;
 
-  // RELACIÓN CON SUCURSAL
-  @ManyToOne(() => Sucursal, { nullable: true })
-  @JoinColumn({ name: 'sucursal_id' })
-  sucursal: Sucursal;
-
-  @Column('uuid', { nullable: true })
+  @Column({ nullable: true })
   sucursalId: string;
 
-  @ManyToOne(() => Usuario)
-  @JoinColumn({ name: 'usuario_id' })
-  usuario: Usuario;
+  @Column({ nullable: true })
+  usuarioAperturaId: string;
 
-  @Column('uuid')
-  usuarioId: string;
+  @Column({ nullable: true })
+  usuarioCierreId: string;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  montoInicial: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  saldoEsperado: number;
+
+  @Column('decimal', { precision: 10, scale: 2, default: 0, nullable: true })
+  saldoFinal: number;
+
+  @Column({ default: 'ABIERTA' })
+  estado: string;
+
+  @Column({ nullable: true })
+  fechaCierre: Date;
 
   @CreateDateColumn()
-  fechaApertura: Date;
-
-  @Column({ type: 'timestamp', nullable: true })
-  fechaCierre: Date;
+  createdAt: Date;
 
   @UpdateDateColumn()
   updatedAt: Date;

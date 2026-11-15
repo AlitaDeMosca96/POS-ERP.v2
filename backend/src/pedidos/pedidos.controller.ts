@@ -36,8 +36,9 @@ export class PedidosController {
   }
 
   @Patch(':id/cocina')
-  marcarListo(@Param('id') id: string) {
-    return this.pedidosService.marcarListo(id);
+  marcarListo(@Param('id') id: string, @Request() req: any) {
+    // ACA ESTA LA CORRECCION: Le pasamos el empresaId al servicio
+    return this.pedidosService.marcarListo(id, req.user.empresaId);
   }
 
   @Patch(':id/delivery')

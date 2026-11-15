@@ -12,6 +12,11 @@ export class CreatePedidoDetalleDto {
   @IsString()
   @IsOptional()
   notas?: string;
+
+  @IsArray()
+  @IsUUID('all', { each: true })
+  @IsOptional()
+  modificadoresIds?: string[];
 }
 
 export class CreatePedidoDto {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { fetcher } from '../../lib/api'; // Asegurate de que esta ruta sea correcta
+import { fetcher } from '../../lib/api';
 import Link from 'next/link';
 
 export default function CajaPage() {
@@ -10,7 +10,6 @@ export default function CajaPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // Verificamos si hay caja abierta al cargar la página
   useEffect(() => {
     verificarCaja();
   }, []);
@@ -19,12 +18,11 @@ export default function CajaPage() {
     try {
       setLoading(true);
       setError('');
-      // Si fetcher devuelve null, significa que no hay caja abierta
-      const data = await fetcher('/caja');
+      // CORREGIDO: Usamos /cajas/actual en plural
+      const data = await fetcher('/cajas/actual');
       setCaja(data);
     } catch (err: any) {
       console.error("Error al verificar caja:", err);
-      // No mostramos error si es 404 o simplemente no hay caja
       if (err.message !== 'Sesión expirada') {
         setError('No se pudo conectar con el servidor.');
       }
@@ -36,13 +34,12 @@ export default function CajaPage() {
   const handleAbrirCaja = async () => {
     try {
       setError('');
-      // Hacemos el POST para abrir la caja
-      const nuevaCaja = await fetcher('/caja/abrir', {
+      // CORREGIDO: Usamos /cajas/abrir en plural
+      const nuevaCaja = await fetcher('/cajas/abrir', {
         method: 'POST',
         body: JSON.stringify({ montoInicial: Number(montoInicial) })
       });
       
-      // Si sale bien, actualizamos el estado
       setCaja(nuevaCaja);
       alert('Caja abierta con éxito');
     } catch (err: any) {
@@ -69,7 +66,6 @@ export default function CajaPage() {
       )}
 
       {!caja ? (
-        // PANTALLA DE CAJA CERRADA
         <div className="bg-white p-6 rounded shadow border">
           <div className="text-center mb-6 border-b pb-4">
             <h2 className="text-xl font-semibold">Caja Cerrada</h2>
@@ -95,7 +91,6 @@ export default function CajaPage() {
           </button>
         </div>
       ) : (
-        // PANTALLA DE CAJA ABIERTA
         <div className="bg-white p-6 rounded shadow border text-center">
           <h2 className="text-xl font-semibold text-green-600 mb-2">Caja Abierta</h2>
           <p className="text-gray-600">Turno iniciado correctamente.</p>

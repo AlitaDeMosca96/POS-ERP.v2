@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateSucursalDto } from './dto/create-sucursale.dto';
 import { UpdateSucursalDto } from './dto/update-sucursale.dto';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -21,18 +21,22 @@ export class SucursalesService {
     return this.sucursalRepository.find({ where: { empresaId } });
   }
 
-  findOne(id: string) {
-    return this.sucursalRepository.findOne({ 
-      where: { id },
+  async findOne(id: string, empresaId: string) {
+    const sucursal = await this.sucursalRepository.findOne({ 
+      where: { id, empresaId },
       relations: { empresa: true }
     });
+    if (!sucursal) throw new NotFoundException('Sucursal no encontrada');
+    return sucursal;
   }
 
-  update(id: string, updateSucursalDto: UpdateSucursalDto) {
+  async update(id: string, updateSucursalDto: UpdateSucursalDto, empresaId: string) {
+    await this.findOne(id, empresaId);
     return this.sucursalRepository.update(id, updateSucursalDto);
   }
 
-  remove(id: string) {
-    return this.sucursalRepository.delete(id);
+  async remove(id: string, empresaId: string) {
+    await this.findOne(id, empresaId);
+    return this.sucursalRepository.softDelete(id); // <-- SOFT DELETE
   }
 }

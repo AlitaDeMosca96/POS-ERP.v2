@@ -1,14 +1,13 @@
 import { Module } from '@nestjs/common';
+import { TypeOrmModule } from '@nestjs/typeorm';
 import { CajasService } from './cajas.service';
 import { CajasController } from './cajas.controller';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { Caja } from './entities/caja.entity';
-import { MovimientoCaja } from './entities/movimiento-caja.entity';
-import { Pedido } from '../pedidos/entities/pedido.entity'; // <-- NUEVO
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Caja, MovimientoCaja, Pedido])], // <-- AGREGADO
+  imports: [TypeOrmModule.forFeature([Caja])],
   controllers: [CajasController],
   providers: [CajasService],
+  exports: [CajasService]
 })
 export class CajasModule {}

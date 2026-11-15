@@ -1,32 +1,36 @@
-import { Controller, Get, Post, Body, Patch, Param, UseGuards, Req, Query } from '@nestjs/common';
-import { CajaService } from './caja.service';
-import { AbrirCajaDto } from './dto/abrir-caja.dto';
-import { CerrarCajaDto } from './dto/cerrar-caja.dto';
+import { Controller, Get, Post, Body, Patch, Param, Req, Query, UseGuards } from '@nestjs/common';
+import { CajasService } from './cajas.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
-@Controller('caja')
-@UseGuards(JwtAuthGuard)
-export class CajaController {
-  constructor(private readonly cajaService: CajaService) {}
+export class AbrirCajaDto {
+  montoInicial: number;
+  sucursalId?: string;
+}
 
-  @Get()
+export class CerrarCajaDto {
+  saldoFinal: number;
+}
+
+@Controller('cajas')
+@UseGuards(JwtAuthGuard) // <-- ESTO EVITA EL ERROR 500
+export class CajasController {
+  constructor(private readonly cajasService: CajasService) {}
+
+  @Get('actual')
   async obtenerCajaActual(@Req() req: any, @Query('sucursalId') sucursalId: string) {
-    // Usamos el sucursalId del query o el del token
     const sucursal = sucursalId || req.user.sucursalId;
-    const caja = await this.cajaService.obtenerCajaAbierta(req.user.empresaId, sucursal);
-    
-    // IMPORTANTE: Si no hay caja, devolvemos null para que el frontend no rompa
+    const caja = await this.cajasService.obtenerCajaAbierta(req.user.empresaId, sucursal);
     return caja || null; 
   }
 
   @Post('abrir')
   abrirCaja(@Body() dto: AbrirCajaDto, @Req() req: any) {
     const sucursal = dto.sucursalId || req.user.sucursalId;
-    return this.cajaService.abrir(req.user.empresaId, sucursal, req.user.id, dto.montoInicial);
+    return this.cajasService.abrir(req.user.empresaId, sucursal, req.user.id, dto.montoInicial);
   }
 
   @Patch(':id/cerrar')
   cerrarCaja(@Param('id') id: string, @Body() dto: CerrarCajaDto, @Req() req: any) {
-    return this.cajaService.cerrar(id, req.user.empresaId, dto.saldoFinal, req.user.id);
+    return this.cajasService.cerrar(id, req.user.empresaId, dto.saldoFinal, req.user.id);
   }
 }

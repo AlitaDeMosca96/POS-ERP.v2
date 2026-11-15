@@ -1,32 +1,44 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Get, Req, UseGuards } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { Public } from './public.decorator';
 import { JwtAuthGuard } from './jwt-auth.guard';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
+  @Public()
   @Post('login')
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto) {
+    const user = await this.authService.validateUser(loginDto.email, loginDto.password);
+    if (!user) {
+      throw new UnauthorizedException('Credenciales inválidas');
+    }
+    return this.authService.login(user);
   }
 
+  @Public()
   @Post('master-login')
-  masterLogin(@Body() loginDto: LoginDto) {
-    return this.authService.masterLogin(loginDto);
+  async masterLogin(@Body() body: any) {
+    return this.authService.masterLogin(body.email, body.password, body.code2FA);
   }
 
-  // --- RUTAS PROTEGIDAS PARA CONFIGURAR 2FA ---
-  @Get('2fa/generate')
+  @Get('profile')
   @UseGuards(JwtAuthGuard)
-  async generate2FA(@Request() req: any) {
-    return this.authService.generate2FASecret(req.user.id, req.user.email);
+  getProfile(@Req() req: any) {
+    return req.user;
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('2fa/generate')
+  async generate2FA(@Req() req: any) {
+    return this.authService.generateTwoFactorAuthenticationSecret(req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('2fa/turn-on')
-  @UseGuards(JwtAuthGuard)
-  async turnOn2FA(@Request() req: any, @Body('code') code: string) {
-    return this.authService.turnOn2FA(req.user.id, code);
+  async turnOn2FA(@Req() req: any, @Body('code') code: string) {
+    return this.authService.turnOnTwoFactorAuthentication(req.user.id, code);
   }
 }

@@ -2,6 +2,6 @@ export enum Rol {
   SUPER_ADMIN = 'SUPER_ADMIN',
   ADMIN = 'ADMIN',
   CAJERO = 'CAJERO',
-  COCINERO = 'COCINERO',
-  MOZO = 'MOZO'
+  COCINA = 'COCINA',
+  MOZO = 'MOZO',
 }

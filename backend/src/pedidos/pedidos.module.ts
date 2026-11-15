@@ -9,11 +9,12 @@ import { Mesa } from '../mesas/entities/mesa.entity';
 import { Caja } from '../cajas/entities/caja.entity';
 import { Receta } from '../recetas/entities/receta.entity';
 import { Insumo } from '../insumos/entities/insumo.entity';
-import { Cliente } from '../clientes/entities/cliente.entity'; // <-- NUEVO
+import { Cliente } from '../clientes/entities/cliente.entity';
+import { Modificadore } from '../modificadores/entities/modificadore.entity'; // <-- NUEVO
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Pedido, PedidoDetalle, Producto, Mesa, Caja, Receta, Insumo, Cliente]) // <-- AGREGADO
+    TypeOrmModule.forFeature([Pedido, PedidoDetalle, Producto, Mesa, Caja, Receta, Insumo, Cliente, Modificadore]) // <-- AGREGADO
   ],
   controllers: [PedidosController],
   providers: [PedidosService],

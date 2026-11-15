@@ -21,17 +21,17 @@ export class SucursalesController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.sucursalesService.findOne(id);
+  findOne(@Param('id') id: string, @Request() req: any) {
+    return this.sucursalesService.findOne(id, req.user.empresaId);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateSucursalDto: UpdateSucursalDto) {
-    return this.sucursalesService.update(id, updateSucursalDto);
+  update(@Param('id') id: string, @Body() updateSucursalDto: UpdateSucursalDto, @Request() req: any) {
+    return this.sucursalesService.update(id, updateSucursalDto, req.user.empresaId);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.sucursalesService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.sucursalesService.remove(id, req.user.empresaId);
   }
 }

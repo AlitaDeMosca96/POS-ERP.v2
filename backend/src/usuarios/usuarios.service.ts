@@ -1,11 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { CreateUsuarioDto } from './dto/create-usuario.dto';
-import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CreateUsuarioDto } from './dto/create-usuario.dto';
+import { UpdateUsuarioDto } from './dto/update-usuario.dto';
 import { Usuario } from './entities/usuario.entity';
-import * as bcrypt from 'bcrypt';
-import { Rol } from './enums/rol.enum'; // <-- IMPORTAMOS EL ENUM
 
 @Injectable()
 export class UsuariosService {
@@ -15,54 +13,46 @@ export class UsuariosService {
   ) {}
 
   async create(createUsuarioDto: CreateUsuarioDto) {
-    const usuario = this.usuarioRepository.create({
-      email: createUsuarioDto.email,
-      password: createUsuarioDto.password,
-      nombre: createUsuarioDto.nombre,
-      rol: createUsuarioDto.rol || Rol.CAJERO, // <-- USAMOS EL ENUM
-      empresaId: createUsuarioDto.empresaId,
-      sucursal: createUsuarioDto.sucursalId ? { id: createUsuarioDto.sucursalId } : undefined
-    });
-    
-    const salt = await bcrypt.genSalt(10);
-    usuario.password = await bcrypt.hash(usuario.password, salt);
-    
+    const usuario = this.usuarioRepository.create(createUsuarioDto);
     return this.usuarioRepository.save(usuario);
   }
 
-  findAll(empresaId: string) {
+  async findAll(empresaId?: string) {
+    const where: any = {};
+    if (empresaId) where.empresaId = empresaId;
     return this.usuarioRepository.find({ 
-      where: { empresaId },
-      relations: { empresa: true, sucursal: true } 
+      where,
+      select: { id: true, email: true, rol: true, activo: true, empresaId: true, sucursalId: true } 
     });
   }
 
-  findOne(id: string) {
-    return this.usuarioRepository.findOne({ 
-      where: { id },
-      relations: { empresa: true, sucursal: true }
+  async findOne(id: string, empresaId?: string) {
+    const where: any = { id };
+    if (empresaId) where.empresaId = empresaId;
+    const usuario = await this.usuarioRepository.findOne({ 
+      where,
+      select: { id: true, email: true, rol: true, activo: true, empresaId: true, sucursalId: true }
     });
+    if (!usuario) throw new NotFoundException('Usuario no encontrado');
+    return usuario;
   }
 
   async findByEmail(email: string) {
-    return this.usuarioRepository.createQueryBuilder('usuario')
-      .addSelect('usuario.password')
-      .addSelect('usuario.twoFactorSecret')
-      .leftJoinAndSelect('usuario.empresa', 'empresa')
-      .leftJoinAndSelect('usuario.sucursal', 'sucursal')
-      .where('usuario.email = :email', { email })
-      .getOne();
+    return this.usuarioRepository.findOne({ 
+      where: { email },
+      select: { id: true, email: true, password: true, rol: true, activo: true, empresaId: true, sucursalId: true, twoFactorSecret: true, twoFactorEnabled: true }
+    });
   }
 
-  async update(id: string, updateUsuarioDto: UpdateUsuarioDto) {
-    if (updateUsuarioDto.password) {
-      const salt = await bcrypt.genSalt(10);
-      updateUsuarioDto.password = await bcrypt.hash(updateUsuarioDto.password, salt);
-    }
-    return this.usuarioRepository.update(id, updateUsuarioDto as any);
+  async update(id: string, updateUsuarioDto: UpdateUsuarioDto, empresaId?: string) {
+    const usuario = await this.findOne(id, empresaId); 
+    await this.usuarioRepository.update(usuario.id, updateUsuarioDto);
+    return this.findOne(usuario.id, empresaId);
   }
 
-  async remove(id: string) {
-    return this.usuarioRepository.softDelete(id);
+  async remove(id: string, empresaId?: string) {
+    const usuario = await this.findOne(id, empresaId);
+    await this.usuarioRepository.delete(usuario.id);
+    return { message: 'Usuario eliminado correctamente' };
   }
 }

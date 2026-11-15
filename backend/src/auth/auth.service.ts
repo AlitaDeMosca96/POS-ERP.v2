@@ -1,10 +1,9 @@
 import { Injectable, UnauthorizedException, BadRequestException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsuariosService } from '../usuarios/usuarios.service';
-import { LoginDto } from './dto/login.dto';
 import * as bcrypt from 'bcrypt';
-import { authenticator } from 'otplib'; // <-- IMPORTAMOS EL OBJETO
-import * as qrcode from 'qrcode';
+import * as speakeasy from 'speakeasy';
+import { Rol } from '../usuarios/enums/rol.enum';
 
 @Injectable()
 export class AuthService {
@@ -13,98 +12,84 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async login(loginDto: LoginDto) {
-    const usuario = await this.usuariosService.findByEmail(loginDto.email);
-    if (!usuario) throw new UnauthorizedException('Credenciales incorrectas');
-
-    if (usuario.empresa && !usuario.empresa.activa) {
-      throw new UnauthorizedException('La cuenta de su empresa se encuentra suspendida. Contacte a soporte.');
+  async validateUser(email: string, pass: string): Promise<any> {
+    const user = await this.usuariosService.findByEmail(email);
+    if (user && user.rol === Rol.SUPER_ADMIN) return null;
+    if (user && user.password && await bcrypt.compare(pass, user.password)) {
+      const { password, twoFactorSecret, ...result } = user;
+      return result;
     }
+    return null;
+  }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Credenciales incorrectas');
-
-    const payload = { 
-      sub: usuario.id, 
-      email: usuario.email, 
-      rol: usuario.rol, 
-      empresaId: usuario.empresaId,
-      sucursalId: usuario.sucursalId
-    };
-    
+  async login(user: any) {
+    const payload = { email: user.email, sub: user.id, rol: user.rol, empresaId: user.empresaId, sucursalId: user.sucursalId };
     return {
       access_token: this.jwtService.sign(payload),
-      usuario: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        email: usuario.email,
-        rol: usuario.rol,
-        empresaId: usuario.empresaId,
-        sucursalId: usuario.sucursalId
-      }
+      user: { id: user.id, email: user.email, rol: user.rol, empresaId: user.empresaId }
     };
   }
 
-  async masterLogin(loginDto: LoginDto) {
-    const usuario = await this.usuariosService.findByEmail(loginDto.email);
-    
-    if (!usuario || usuario.rol !== 'SUPER_ADMIN') {
-      throw new UnauthorizedException('Acceso denegado al sistema maestro');
+  async masterLogin(email: string, pass: string, code2FA?: string) {
+    const user = await this.usuariosService.findByEmail(email);
+    if (!user || user.rol !== Rol.SUPER_ADMIN) {
+      throw new UnauthorizedException('Credenciales inválidas o no es Super Admin');
+    }
+    if (!(await bcrypt.compare(pass, user.password))) {
+      throw new UnauthorizedException('Credenciales inválidas');
     }
 
-    const isPasswordValid = await bcrypt.compare(loginDto.password, usuario.password);
-    if (!isPasswordValid) throw new UnauthorizedException('Acceso denegado al sistema maestro');
-
-    if (usuario.twoFactorEnabled) {
-      if (!loginDto.twoFactorCode) {
-        throw new BadRequestException('Se requiere código 2FA');
+    // Si el 2FA está activo, pide el código
+    if (user.twoFactorEnabled) {
+      if (!code2FA) {
+        return { require2FA: true, message: 'Se requiere código de autenticación' };
       }
-      const isValid = authenticator.verify({ token: loginDto.twoFactorCode, secret: usuario.twoFactorSecret });
-      if (!isValid) {
-        throw new UnauthorizedException('Código 2FA inválido');
+      const verified = speakeasy.totp.verify({
+        secret: user.twoFactorSecret,
+        encoding: 'base32',
+        token: code2FA,
+      });
+      if (!verified) {
+        throw new UnauthorizedException('Código 2FA inválido o expirado');
       }
     }
 
-    const payload = { 
-      sub: usuario.id, 
-      email: usuario.email, 
-      rol: usuario.rol, 
-      empresaId: usuario.empresaId
-    };
+    return this.login(user);
+  }
+
+  async generateTwoFactorAuthenticationSecret(userId: string) {
+    const user = await this.usuariosService.findOne(userId);
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+
+    const secret = speakeasy.generateSecret({ name: `POS-ERP MASTER (${user.email})` });
     
+    // Guardamos el secret en la BD, pero mantenemos el 2FA desactivado
+    await this.usuariosService.update(userId, { twoFactorSecret: secret.base32, twoFactorEnabled: false } as any);
+
     return {
-      access_token: this.jwtService.sign(payload),
-      usuario: {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        email: usuario.email,
-        rol: usuario.rol,
-        empresaId: usuario.empresaId
-      }
+      secret: secret.base32,
+      otpauthUrl: secret.otpauth_url
     };
   }
 
-  async generate2FASecret(userId: string, email: string) {
-    // USAMOS authenticator.generateSecret()
-    const secret = authenticator.generateSecret();
+  async turnOnTwoFactorAuthentication(userId: string, code2FA: string) {
+    const user = await this.usuariosService.findByEmail((await this.usuariosService.findOne(userId)).email);
     
-    await this.usuariosService.update(userId, { twoFactorSecret: secret, twoFactorEnabled: false } as any);
+    if (!user || !user.twoFactorSecret) {
+      throw new BadRequestException('No hay secreto 2FA generado. Por favor, recargá la página.');
+    }
 
-    // USAMOS authenticator.keyuri()
-    const otpauthUrl = authenticator.keyuri(email, 'MasterCtrl SaaS', secret);
-    const qrCodeDataUrl = await qrcode.toDataURL(otpauthUrl);
+    const verified = speakeasy.totp.verify({
+      secret: user.twoFactorSecret,
+      encoding: 'base32',
+      token: code2FA,
+    });
 
-    return { secret, qrCodeDataUrl };
-  }
-
-  async turnOn2FA(userId: string, code: string) {
-    const usuario = await this.usuariosService.findOne(userId);
-    if (!usuario || !usuario.twoFactorSecret) throw new BadRequestException('No hay secreto generado');
-
-    const isValid = authenticator.verify({ token: code, secret: usuario.twoFactorSecret });
-    if (!isValid) throw new UnauthorizedException('Código inválido. Intentá de nuevo.');
+    if (!verified) {
+      throw new UnauthorizedException('Código inválido. Verificá la hora de tu celular.');
+    }
 
     await this.usuariosService.update(userId, { twoFactorEnabled: true } as any);
-    return { success: true };
+    return { success: true, message: '2FA Activado correctamente' };
   }
 }

@@ -9,8 +9,8 @@ export class RecetasController {
   constructor(private readonly recetasService: RecetasService) {}
 
   @Post()
-  create(@Body() createRecetaDto: CreateRecetaDto) {
-    return this.recetasService.create(createRecetaDto);
+  create(@Body() createRecetaDto: CreateRecetaDto, @Request() req: any) {
+    return this.recetasService.create(createRecetaDto, req.user.empresaId);
   }
 
   @Get('producto/:productoId')
@@ -19,7 +19,7 @@ export class RecetasController {
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.recetasService.remove(id);
+  remove(@Param('id') id: string, @Request() req: any) {
+    return this.recetasService.remove(id, req.user.empresaId);
   }
 }
