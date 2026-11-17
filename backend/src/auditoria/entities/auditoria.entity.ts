@@ -5,20 +5,20 @@ export class Auditoria {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'uuid' })
-  empresaId: string;
+  @Column({ type: 'uuid', nullable: true })
+  empresaId: string | null;
 
   @Column({ type: 'uuid', nullable: true })
-  usuarioId: string;
+  usuarioId: string | null;
 
   @Column({ type: 'varchar', length: 50 })
-  entidad: string; // 'PEDIDO', 'CAJA', 'PRODUCTO', etc.
+  entidad: string;
 
   @Column({ type: 'uuid', nullable: true })
-  entidadId: string;
+  entidadId: string | null;
 
   @Column({ type: 'varchar', length: 50 })
-  accion: string; // 'CREAR', 'ANULAR', 'CERRAR', 'MOVIMIENTO'
+  accion: string;
 
   @Column({ type: 'jsonb', nullable: true })
   datosAnteriores: any;
@@ -27,8 +27,8 @@ export class Auditoria {
   datosNuevos: any;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
-  motivo: string;
+  motivo: string | null;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   fecha: Date;
 }

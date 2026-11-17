@@ -1,20 +1,18 @@
-version: '3.8'
-
 services:
   db:
     image: postgres:15-alpine
     container_name: pos_erp_db
     restart: always
     environment:
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-      POSTGRES_DB: ${DB_NAME:-pos-erp-v2}
+      POSTGRES_USER: ${DB_USER:?Debes definir DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Debes definir DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:?Debes definir DB_NAME}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     networks:
       - pos_network
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres} -d ${DB_NAME:-pos-erp-v2}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:?} -d ${DB_NAME:?}"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,23 +24,25 @@ services:
     environment:
       - DB_HOST=db
       - DB_PORT=5432
-      - DB_USER=${DB_USER:-postgres}
-      - DB_PASSWORD=${DB_PASSWORD:-postgres}
-      - DB_NAME=${DB_NAME:-pos-erp-v2}
-      - JWT_SECRET=${JWT_SECRET}
-      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY}
+      - DB_USER=${DB_USER:?}
+      - DB_PASSWORD=${DB_PASSWORD:?}
+      - DB_NAME=${DB_NAME:?}
+      - JWT_SECRET=${JWT_SECRET:?Debes definir JWT_SECRET}
+      - TOTP_ENCRYPTION_KEY=${TOTP_ENCRYPTION_KEY:?Debes definir TOTP_ENCRYPTION_KEY}
       - PORT=3000
-      - CORS_ORIGIN=${CORS_ORIGIN:-http://localhost:3001}
+      - CORS_ORIGIN=${CORS_ORIGIN:?Debes definir CORS_ORIGIN}
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "3000:3000"
+    # Se quitó "ports: - 3000:3000" por seguridad. El frontend se comunica internamente.
     networks:
       - pos_network
 
   frontend:
-    build: ./frontend
+    build: 
+      context: ./frontend
+      args:
+        - NEXT_PUBLIC_API_URL=/api
     container_name: pos_erp_frontend
     restart: always
     environment:

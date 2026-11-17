@@ -1,14 +1,15 @@
-import { Controller, Get, Post, Body, Param, Delete, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Delete, Request } from '@nestjs/common';
 import { ModificadoresService } from './modificadores.service';
 import { CreateModificadoreDto } from './dto/create-modificadore.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Rol } from '../usuarios/enums/rol.enum';
 
 @Controller('modificadores')
-@UseGuards(JwtAuthGuard)
 export class ModificadoresController {
   constructor(private readonly modificadoresService: ModificadoresService) {}
 
   @Post()
+  @Roles(Rol.ADMIN)
   create(@Body() createModificadoreDto: CreateModificadoreDto, @Request() req: any) {
     return this.modificadoresService.create(createModificadoreDto, req.user.empresaId);
   }
@@ -19,6 +20,7 @@ export class ModificadoresController {
   }
 
   @Delete(':id')
+  @Roles(Rol.ADMIN)
   remove(@Param('id') id: string, @Request() req: any) {
     return this.modificadoresService.remove(id, req.user.empresaId);
   }

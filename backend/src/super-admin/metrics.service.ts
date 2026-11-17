@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Empresa } from '../empresas/entities/empresa.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
-import { Auditoria } from './entities/auditoria.entity';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 import * as os from 'os';
 
 @Injectable()
@@ -13,8 +13,7 @@ export class MetricsService {
     private readonly empresaRepository: Repository<Empresa>,
     @InjectRepository(Usuario)
     private readonly usuarioRepository: Repository<Usuario>,
-    @InjectRepository(Auditoria)
-    private readonly auditoriaRepository: Repository<Auditoria>,
+    private readonly auditoriaService: AuditoriaService,
   ) {}
 
   async getDashboardData() {
@@ -33,10 +32,7 @@ export class MetricsService {
     const memoriaLibreGB = os.freemem() / (1024 ** 3);
     const usoMemoria = ((totalMemoriaGB - memoriaLibreGB) / totalMemoriaGB) * 100;
 
-    const auditorias = await this.auditoriaRepository.find({
-      order: { fecha: 'DESC' },
-      take: 5
-    });
+    const auditorias = await this.auditoriaService.findAll(5);
 
     return {
       mrr: Number(stats.mrr) || 0,
@@ -55,7 +51,15 @@ export class MetricsService {
   }
 
   async registrarLog(accion: string, tipo: string, adminEmail: string = 'Sistema') {
-    const log = this.auditoriaRepository.create({ accion, tipo, adminEmail });
-    await this.auditoriaRepository.save(log);
+    await this.auditoriaService.registrar(
+      null, // empresaId
+      null, // usuarioId
+      'SISTEMA',
+      null,
+      accion,
+      null,
+      null,
+      `Tipo: ${tipo} | Actor: ${adminEmail}`
+    );
   }
 }

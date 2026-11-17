@@ -15,8 +15,14 @@ export class Pedido {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  total: number;
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  subtotal: number; // Neto total
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  ivaTotal: number; // IVA total
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  total: number; // Total final con IVA
 
   @Column({ type: 'varchar', default: 'PAGADO' })
   estado: string;
@@ -30,26 +36,11 @@ export class Pedido {
   @Column({ type: 'varchar', nullable: true })
   direccionEntrega: string | null;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   costoEnvio: number;
 
   @Column({ type: 'varchar', default: 'NO_APLICA' })
   estadoDelivery: string;
-
-  @Column({ type: 'varchar', default: 'FACTURA_B' })
-  tipoFactura: string;
-
-  @Column({ type: 'varchar', nullable: true })
-  cuitFactura: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  razonSocialFactura: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  numeroComprobante: string | null;
-
-  @Column({ type: 'varchar', nullable: true })
-  caeSimulado: string | null;
 
   @Column({ type: 'varchar', nullable: true })
   motivoAnulacion: string | null;
@@ -57,48 +48,48 @@ export class Pedido {
   @Column({ type: 'uuid', nullable: true })
   usuarioAnulacionId: string | null;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   fechaAnulacion: Date | null;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
   @ManyToOne(() => Sucursal, { nullable: true })
-  @JoinColumn({ name: 'sucursal_id' })
+  @JoinColumn({ name: 'sucursalId' })
   sucursal: Sucursal;
 
   @Column('uuid', { nullable: true })
   sucursalId: string;
 
   @ManyToOne(() => Mesa, { nullable: true })
-  @JoinColumn({ name: 'mesa_id' })
+  @JoinColumn({ name: 'mesaId' })
   mesa: Mesa;
 
   @Column('uuid', { nullable: true })
   mesaId: string;
 
   @ManyToOne(() => Caja, { nullable: true })
-  @JoinColumn({ name: 'caja_id' })
+  @JoinColumn({ name: 'cajaId' })
   caja: Caja;
 
   @Column('uuid', { nullable: true })
   cajaId: string;
 
   @ManyToOne(() => Cliente, { nullable: true })
-  @JoinColumn({ name: 'cliente_id' })
+  @JoinColumn({ name: 'clienteId' })
   cliente: Cliente;
 
   @Column('uuid', { nullable: true })
   clienteId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
   @OneToMany(() => PedidoDetalle, detalle => detalle.pedido, { cascade: true })

@@ -19,27 +19,27 @@ export class Caja {
   @Column({ nullable: true })
   usuarioCierreId: string;
 
-  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  @Column('numeric', { precision: 14, scale: 2, default: 0 })
   montoInicial: number;
 
-  @Column('decimal', { precision: 10, scale: 2, default: 0 })
+  @Column('numeric', { precision: 14, scale: 2, default: 0 })
   saldoEsperado: number;
 
-  @Column('decimal', { precision: 10, scale: 2, default: 0, nullable: true })
+  @Column('numeric', { precision: 14, scale: 2, default: 0, nullable: true })
   saldoFinal: number;
 
   @Column({ default: 'ABIERTA' })
   estado: string;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   fechaCierre: Date;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

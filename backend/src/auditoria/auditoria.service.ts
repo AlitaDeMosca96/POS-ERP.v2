@@ -11,14 +11,14 @@ export class AuditoriaService {
   ) {}
 
   async registrar(
-    empresaId: string,
+    empresaId: string | null,
     usuarioId: string | null,
     entidad: string,
     entidadId: string | null,
     accion: string,
     datosAnteriores: any = null,
     datosNuevos: any = null,
-    motivo: string = null
+    motivo: string | null = null
   ) {
     const log = this.auditoriaRepository.create({
       empresaId,
@@ -31,5 +31,12 @@ export class AuditoriaService {
       motivo
     });
     return this.auditoriaRepository.save(log);
+  }
+
+  async findAll(limit: number = 100) {
+    return this.auditoriaRepository.find({
+      order: { fecha: 'DESC' },
+      take: limit
+    });
   }
 }

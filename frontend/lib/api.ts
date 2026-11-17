@@ -18,12 +18,15 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('token');
       localStorage.removeItem('usuario');
-      // Corregido: El login está en la raíz, no en /login
       if (window.location.pathname !== '/') {
         window.location.href = '/';
       }
     }
-    throw new Error('Sesión expirada o no autorizada.');
+    throw new Error('Sesión expirada. Por favor, volvé a ingresar.');
+  }
+
+  if (response.status === 403) {
+    throw new Error('No tenés permisos para realizar esta acción.');
   }
 
   let data;
@@ -34,7 +37,9 @@ export async function fetcher(endpoint: string, options: RequestInit = {}) {
   }
 
   if (!response.ok) {
-    throw new Error(data?.message || 'Error en la petición al servidor');
+    // Si el backend devuelve un array de errores de validación, tomamos el primero
+    const msg = Array.isArray(data?.message) ? data.message[0] : (data?.message || 'Error en la petición al servidor');
+    throw new Error(msg);
   }
 
   return data;

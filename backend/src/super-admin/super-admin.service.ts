@@ -1,13 +1,14 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import { Empresa } from '../empresas/entities/empresa.entity';
 import { Usuario } from '../usuarios/entities/usuario.entity';
 import { Pedido } from '../pedidos/entities/pedido.entity';
 import { MetricsService } from './metrics.service';
 import { JwtService } from '@nestjs/jwt';
 import { Rol } from '../usuarios/enums/rol.enum';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
+import { CrearEmpresaAdminDto } from './dto/crear-empresa-admin.dto';
 
 @Injectable()
 export class SuperAdminService {
@@ -20,6 +21,7 @@ export class SuperAdminService {
     private readonly pedidoRepository: Repository<Pedido>,
     private readonly metricsService: MetricsService,
     private readonly jwtService: JwtService,
+    private readonly dataSource: DataSource,
   ) {}
 
   async getDashboardMetrics() {
@@ -66,32 +68,49 @@ export class SuperAdminService {
     }));
   }
 
-  async crearEmpresa(data: any, adminEmail: string) {
-    const empresa = this.empresaRepository.create({
-      nombre: data.nombre,
-      cuit: data.cuit,
-      monedaBase: 'ARS',
-      activa: true,
-      planId: data.planId || undefined,
-      plan: data.planId ? { id: data.planId } : undefined
-    });
-    await this.empresaRepository.save(empresa);
+  async crearEmpresa(data: CrearEmpresaAdminDto, adminEmail: string) {
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(data.adminPassword, salt);
+    try {
+      const existeAdmin = await queryRunner.manager.findOne(Usuario, { where: { email: data.adminEmail } });
+      if (existeAdmin) {
+        throw new BadRequestException('El email del administrador ya está registrado en el sistema.');
+      }
 
-    const admin = this.usuarioRepository.create({
-      email: data.adminEmail,
-      password: hashedPassword,
-      nombre: data.adminNombre,
-      rol: Rol.ADMIN,
-      empresaId: empresa.id
-    });
-    await this.usuarioRepository.save(admin);
+      const empresa = queryRunner.manager.create(Empresa, {
+        nombre: data.nombre,
+        cuit: data.cuit,
+        monedaBase: 'ARS',
+        activa: true,
+        planId: data.planId || undefined,
+      });
+      await queryRunner.manager.save(empresa);
 
-    await this.metricsService.registrarLog(`Se creó la empresa: ${empresa.nombre}`, 'success', adminEmail);
+      const salt = await bcrypt.genSalt(12);
+      const hashedPassword = await bcrypt.hash(data.adminPassword, salt);
 
-    return empresa;
+      const admin = queryRunner.manager.create(Usuario, {
+        email: data.adminEmail,
+        password: hashedPassword,
+        nombre: data.adminNombre,
+        rol: Rol.ADMIN,
+        empresaId: empresa.id
+      });
+      await queryRunner.manager.save(admin);
+
+      await queryRunner.commitTransaction();
+      await this.metricsService.registrarLog(`Se creó la empresa: ${empresa.nombre}`, 'success', adminEmail);
+
+      return empresa;
+
+    } catch (error) {
+      await queryRunner.rollbackTransaction();
+      throw error;
+    } finally {
+      await queryRunner.release();
+    }
   }
 
   async toggleEstado(id: string, adminEmail: string) {
@@ -108,7 +127,7 @@ export class SuperAdminService {
     return empresa;
   }
 
-  async impersonarAdmin(empresaId: string, adminEmail: string) {
+  async impersonarAdmin(empresaId: string, motivo: string, superAdminEmail: string) {
     const admin = await this.usuarioRepository.findOne({
       where: { empresaId, rol: Rol.ADMIN },
       relations: { empresa: true }
@@ -116,7 +135,11 @@ export class SuperAdminService {
 
     if (!admin) throw new NotFoundException('No se encontró un administrador para esta empresa');
 
-    await this.metricsService.registrarLog(`Super Admin ingresó como soporte a: ${admin.empresa.nombre}`, 'warning', adminEmail);
+    await this.metricsService.registrarLog(
+      `Super Admin ${superAdminEmail} ingresó como soporte a: ${admin.empresa.nombre}. Motivo: ${motivo}`,
+      'warning',
+      superAdminEmail
+    );
 
     const payload = {
       sub: admin.id,
@@ -124,11 +147,12 @@ export class SuperAdminService {
       rol: admin.rol,
       empresaId: admin.empresaId,
       sucursalId: admin.sucursalId,
-      isImpersonation: true
+      isImpersonation: true,
+      actorEmail: superAdminEmail
     };
 
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload, { expiresIn: '30m' }),
       usuario: { id: admin.id, nombre: admin.nombre, email: admin.email, rol: admin.rol, empresaId: admin.empresaId, sucursalId: admin.sucursalId }
     };
   }

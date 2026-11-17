@@ -17,22 +17,22 @@ export class Mesa {
   estado: string;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
   @ManyToOne(() => Sucursal, { nullable: true })
-  @JoinColumn({ name: 'sucursal_id' })
+  @JoinColumn({ name: 'sucursalId' })
   sucursal: Sucursal;
 
   @Column('uuid', { nullable: true })
   sucursalId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

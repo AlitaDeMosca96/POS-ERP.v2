@@ -10,38 +10,41 @@ export class Producto {
   @Column({ type: 'varchar', length: 255 })
   nombre: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   precio: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   costo: number;
 
   @Column({ type: 'int', default: 0 })
   stock: number;
 
   @Column({ type: 'boolean', default: true })
+  controlaStock: boolean; // <-- NUEVO
+
+  @Column({ type: 'boolean', default: true })
   activo: boolean;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
   @ManyToOne(() => Categoria, { nullable: true })
-  @JoinColumn({ name: 'categoria_id' })
+  @JoinColumn({ name: 'categoriaId' })
   categoria: Categoria;
 
   @Column('uuid', { nullable: true })
   categoriaId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

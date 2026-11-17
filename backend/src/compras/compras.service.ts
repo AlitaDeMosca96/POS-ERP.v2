@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException } from '@nestjs/comm
 import { CreateCompraDto } from './dto/create-compra.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
-import Decimal from 'decimal.js'; // <-- NUEVO
+import Decimal from 'decimal.js';
 import { Compra } from './entities/compra.entity';
 import { Insumo } from '../insumos/entities/insumo.entity';
 import { Proveedore } from '../proveedores/entities/proveedore.entity';
@@ -28,8 +28,8 @@ export class ComprasService {
       });
       if (!proveedor) throw new NotFoundException('Proveedor no encontrado o no pertenece a tu empresa');
 
-      let totalCalculado = new Decimal(0); // <-- DECIMAL
-      const detallesParaGuardar = [];
+      let totalCalculado = new Decimal(0);
+      const detallesParaGuardar: any[] = []; // <-- CORREGIDO AQUÍ
 
       for (const det of createCompraDto.detalles) {
         const insumo = await queryRunner.manager.findOne(Insumo, {
@@ -71,7 +71,7 @@ export class ComprasService {
       }
 
       const compra = queryRunner.manager.create(Compra, {
-        total: totalCalculado.toNumber(), // <-- ASIGNAMOS COMO NUMBER
+        total: totalCalculado.toNumber(),
         empresaId,
         proveedorId: createCompraDto.proveedorId,
         detalles: detallesParaGuardar as any

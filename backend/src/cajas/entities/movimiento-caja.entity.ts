@@ -7,21 +7,21 @@ export class MovimientoCaja {
   id: string;
 
   @Column({ type: 'varchar', length: 50 })
-  tipo: string; // INGRESO, EGRESO (Sangría)
+  tipo: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
   monto: number;
 
   @Column({ type: 'varchar', length: 255 })
   motivo: string;
 
   @ManyToOne(() => Caja, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'caja_id' })
+  @JoinColumn({ name: 'cajaId' })
   caja: Caja;
 
   @Column('uuid')
   cajaId: string;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   fecha: Date;
 }

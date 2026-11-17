@@ -1,10 +1,11 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Injectable, BadRequestException, NotFoundException, ConflictException } from '@nestjs/common';
 import { CreatePedidoDto } from './dto/create-pedido.dto';
 import { UpdatePedidoDto } from './dto/update-pedido.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository, In, EntityManager } from 'typeorm';
 import Decimal from 'decimal.js';
 import { Pedido } from './entities/pedido.entity';
+import { PedidoDetalle } from './entities/pedido-detalle.entity';
 import { Producto } from '../productos/entities/producto.entity';
 import { Mesa } from '../mesas/entities/mesa.entity';
 import { Caja } from '../cajas/entities/caja.entity';
@@ -32,25 +33,22 @@ export class PedidosService {
     private readonly auditoriaService: AuditoriaService,
   ) {}
 
-  private async obtenerCajaAbiertaSucursal(manager: EntityManager, empresaId: string, sucursalId?: string) {
+  private async obtenerCajaAbiertaSucursal(manager: EntityManager, empresaId: string, sucursalId?: string | null) {
     if (!sucursalId) return null;
     return manager.findOne(Caja, { where: { empresaId, sucursalId, estado: 'ABIERTA' } });
   }
 
   private async revertirStockPedido(manager: EntityManager, pedido: Pedido) {
     for (const det of pedido.detalles) {
-      if (Array.isArray(det.recetaSnapshot)) {
-        if (det.recetaSnapshot.length > 0) {
-          for (const item of det.recetaSnapshot) {
-            const cantidadADevolver = Number(item.cantidad) * det.cantidad;
-            await manager.increment(Insumo, { id: item.insumoId }, 'stock', cantidadADevolver);
-          }
-        } else {
-          await manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+      if (Array.isArray(det.recetaSnapshot) && det.recetaSnapshot.length > 0) {
+        for (const item of det.recetaSnapshot) {
+          const cantidadADevolver = Number(item.cantidad) * det.cantidad;
+          await manager.increment(Insumo, { id: item.insumoId }, 'stock', cantidadADevolver);
         }
       } else {
         const receta = await manager.find(Receta, {
-          where: { producto: { id: det.producto.id } }, relations: { insumo: true }
+          where: { productoId: det.productoId },
+          relations: { insumo: true }
         });
         if (receta.length > 0) {
           for (const item of receta) {
@@ -58,7 +56,7 @@ export class PedidosService {
             await manager.increment(Insumo, { id: item.insumo.id }, 'stock', cantidadADevolver);
           }
         } else {
-          await manager.increment(Producto, { id: det.producto.id }, 'stock', det.cantidad);
+          await manager.increment(Producto, { id: det.productoId }, 'stock', det.cantidad);
         }
       }
     }
@@ -68,18 +66,27 @@ export class PedidosService {
     if (det.recetaSnapshot && det.recetaSnapshot.length > 0) {
       for (const item of det.recetaSnapshot) {
         const cantidadADescontar = Number(item.cantidad) * det.cantidad;
-        const insumoActual = await manager.findOne(Insumo, { where: { id: item.insumoId } });
-        if (!insumoActual || Number(insumoActual.stock) < cantidadADescontar) {
+        const res = await manager.createQueryBuilder()
+          .update(Insumo)
+          .set({ stock: () => `stock - ${cantidadADescontar}` })
+          .where('id = :id AND stock >= :cantidad', { id: item.insumoId, cantidad: cantidadADescontar })
+          .execute();
+        
+        if (res.affected === 0) {
           throw new BadRequestException(`Stock insuficiente del insumo ${item.nombre}`);
         }
-        await manager.decrement(Insumo, { id: item.insumoId }, 'stock', cantidadADescontar);
       }
     } else {
-      const prodActual = await manager.findOne(Producto, { where: { id: det.producto.id, empresaId } });
-      if (!prodActual || Number(prodActual.stock) < det.cantidad) {
-        throw new BadRequestException(`Stock insuficiente del producto ${prodActual?.nombre}`);
+      const res = await manager.createQueryBuilder()
+        .update(Producto)
+        .set({ stock: () => `stock - ${det.cantidad}` })
+        .where('id = :id AND "empresaId" = :empresaId AND stock >= :cantidad', { id: det.productoId, empresaId, cantidad: det.cantidad })
+        .execute();
+
+      if (res.affected === 0) {
+        const prod = await manager.findOne(Producto, { where: { id: det.productoId, empresaId } });
+        throw new BadRequestException(`Stock insuficiente del producto ${prod?.nombre || det.productoId}`);
       }
-      await manager.decrement(Producto, { id: det.producto.id }, 'stock', det.cantidad);
     }
   }
 
@@ -87,9 +94,11 @@ export class PedidosService {
     manager: EntityManager,
     empresaId: string,
     detallesDto: any[]
-  ): Promise<{ detallesFinales: any[]; totalCalculado: Decimal }> {
+  ): Promise<{ detallesFinales: any[]; subtotalCalculado: Decimal; ivaCalculado: Decimal; totalCalculado: Decimal }> {
+    let subtotalCalculado = new Decimal(0);
+    let ivaCalculado = new Decimal(0);
     let totalCalculado = new Decimal(0);
-    const detallesFinales = [];
+    const detallesFinales: any[] = [];
 
     for (const det of detallesDto) {
       const producto = await manager.findOne(Producto, {
@@ -116,10 +125,20 @@ export class PedidosService {
         }
       }
 
-      totalCalculado = totalCalculado.plus(precioReal.times(det.cantidad));
+      const cantidad = new Decimal(det.cantidad);
+      const totalLinea = precioReal.times(cantidad);
+      
+      const alicuota = 21;
+      const divisor = new Decimal(1).plus(new Decimal(alicuota).dividedBy(100));
+      const subtotalLinea = totalLinea.dividedBy(divisor);
+      const ivaLinea = totalLinea.minus(subtotalLinea);
+
+      totalCalculado = totalCalculado.plus(totalLinea);
+      subtotalCalculado = subtotalCalculado.plus(subtotalLinea);
+      ivaCalculado = ivaCalculado.plus(ivaLinea);
 
       const receta = await manager.find(Receta, {
-        where: { producto: { id: producto.id } }, relations: { insumo: true }
+        where: { productoId: producto.id }, relations: { insumo: true }
       });
 
       const recetaSnapshot = receta.length > 0
@@ -133,13 +152,16 @@ export class PedidosService {
       detallesFinales.push({
         cantidad: det.cantidad,
         precioUnitario: precioReal.toNumber(),
+        subtotal: subtotalLinea.toDecimalPlaces(2).toNumber(),
+        alicuotaIva: alicuota,
+        ivaTotal: ivaLinea.toDecimalPlaces(2).toNumber(),
         notas: notasFinales.trim(),
-        producto: { id: producto.id },
+        productoId: producto.id,
         recetaSnapshot
       });
     }
 
-    return { detallesFinales, totalCalculado };
+    return { detallesFinales, subtotalCalculado, ivaCalculado, totalCalculado };
   }
 
   async create(createPedidoDto: CreatePedidoDto, usuarioId: string, empresaId: string) {
@@ -148,40 +170,19 @@ export class PedidosService {
     await queryRunner.startTransaction();
 
     try {
-      const { detallesFinales, totalCalculado: subtotal } = await this.construirDetallesFinales(
+      if (createPedidoDto.estado === 'ANULADO') {
+        throw new BadRequestException('No se puede crear o modificar un pedido a ANULADO directamente.');
+      }
+
+      const { detallesFinales, subtotalCalculado, ivaCalculado, totalCalculado } = await this.construirDetallesFinales(
         queryRunner.manager,
         empresaId,
         createPedidoDto.detalles
       );
 
-      let totalCalculado = subtotal;
+      let totalFinal = totalCalculado;
       if (createPedidoDto.costoEnvio) {
-        totalCalculado = totalCalculado.plus(createPedidoDto.costoEnvio);
-      }
-
-      let numeroComprobante: string | undefined = undefined;
-      let caeSimulado: string | undefined = undefined;
-
-      if (createPedidoDto.tipoFactura !== 'FACTURA_B' && createPedidoDto.tipoFactura) {
-        if (!createPedidoDto.cuitFactura || createPedidoDto.cuitFactura.length !== 11) {
-          throw new BadRequestException('CUIT inválido para facturación');
-        }
-
-        const ultimoPedido = await queryRunner.manager.findOne(Pedido, {
-          where: { empresaId, tipoFactura: createPedidoDto.tipoFactura },
-          order: { createdAt: 'DESC' }
-        });
-
-        let secuencial = 1;
-        if (ultimoPedido && ultimoPedido.numeroComprobante) {
-          const partes = ultimoPedido.numeroComprobante.split('-');
-          if (partes.length === 3) secuencial = parseInt(partes[2]) + 1;
-        }
-
-        const ptoVenta = '0001';
-        const numeroStr = secuencial.toString().padStart(8, '0');
-        numeroComprobante = `PV-${ptoVenta}-${numeroStr}`;
-        caeSimulado = `CAE-${Date.now().toString().slice(-10)}`;
+        totalFinal = totalFinal.plus(createPedidoDto.costoEnvio);
       }
 
       let pedidoGuardado;
@@ -189,64 +190,72 @@ export class PedidosService {
       if (createPedidoDto.pedidoId) {
         const pedidoExistente = await queryRunner.manager.findOne(Pedido, {
           where: { id: createPedidoDto.pedidoId, empresaId },
-          relations: { detalles: { producto: true } }
+          relations: { detalles: true }
         });
 
-        if (!pedidoExistente) throw new BadRequestException('Pedido original no encontrado');
+        if (!pedidoExistente) throw new NotFoundException('Pedido original no encontrado');
+        
+        if (pedidoExistente.estado !== 'ABIERTO') {
+          throw new ConflictException('Solo se pueden modificar pedidos en estado ABIERTO');
+        }
 
         await this.revertirStockPedido(queryRunner.manager, pedidoExistente);
+        await queryRunner.manager.delete(PedidoDetalle, { pedidoId: pedidoExistente.id });
 
-        await queryRunner.manager.delete('PedidoDetalle', { pedidoId: pedidoExistente.id });
+        const updateData: Partial<Pedido> = {
+          subtotal: subtotalCalculado.toNumber(),
+          ivaTotal: ivaCalculado.toNumber(),
+          total: totalFinal.toNumber(),
+          metodoPago: createPedidoDto.metodoPago || pedidoExistente.metodoPago,
+          clienteId: createPedidoDto.clienteId || pedidoExistente.clienteId,
+          mesaId: createPedidoDto.mesaId || pedidoExistente.mesaId,
+        };
 
-        pedidoExistente.total = totalCalculado.toNumber();
-        pedidoExistente.estado = createPedidoDto.estado || pedidoExistente.estado;
-        pedidoExistente.metodoPago = createPedidoDto.metodoPago || pedidoExistente.metodoPago;
-        pedidoExistente.tipoFactura = createPedidoDto.tipoFactura || pedidoExistente.tipoFactura;
-        pedidoExistente.cuitFactura = createPedidoDto.cuitFactura || pedidoExistente.cuitFactura;
-        pedidoExistente.razonSocialFactura = createPedidoDto.razonSocialFactura || pedidoExistente.razonSocialFactura;
-        pedidoExistente.numeroComprobante = numeroComprobante || pedidoExistente.numeroComprobante;
-        pedidoExistente.caeSimulado = caeSimulado || pedidoExistente.caeSimulado;
-
-        if (createPedidoDto.mesaId) {
+        if (createPedidoDto.mesaId && createPedidoDto.mesaId !== pedidoExistente.mesaId) {
           const mesaValida = await queryRunner.manager.findOne(Mesa, { where: { id: createPedidoDto.mesaId, empresaId } });
           if (!mesaValida) throw new BadRequestException('La mesa no pertenece a tu empresa');
-          pedidoExistente.mesaId = createPedidoDto.mesaId;
         }
 
         const sucursalFinal = pedidoExistente.sucursalId || createPedidoDto.sucursalId;
 
-        if (pedidoExistente.estado === 'PAGADO') {
+        if (createPedidoDto.estado === 'PAGADO') {
           const cajaAbierta = await this.obtenerCajaAbiertaSucursal(queryRunner.manager, empresaId, sucursalFinal);
-          pedidoExistente.cajaId = cajaAbierta ? cajaAbierta.id : pedidoExistente.cajaId;
+          if (!cajaAbierta) throw new BadRequestException('Debe abrir una caja para cobrar el pedido');
+          
+          updateData.cajaId = cajaAbierta.id;
+          updateData.estado = 'PAGADO';
 
-          if (pedidoExistente.mesaId) {
-            const mesa = await queryRunner.manager.findOne(Mesa, { where: { id: pedidoExistente.mesaId, empresaId } });
-            if (mesa) {
-              await queryRunner.manager.update(Mesa, pedidoExistente.mesaId, { estado: 'LIBRE' });
-            }
+          if (updateData.mesaId) {
+            await queryRunner.manager.update(Mesa, updateData.mesaId, { estado: 'LIBRE' });
           }
         }
 
+        await queryRunner.manager.update(Pedido, pedidoExistente.id, updateData);
+
         for (const det of detallesFinales) {
           await this.descontarStock(queryRunner.manager, empresaId, det);
-          await queryRunner.manager.save('PedidoDetalle', { ...det, pedidoId: pedidoExistente.id });
+          await queryRunner.manager.save(PedidoDetalle, { ...det, pedidoId: pedidoExistente.id });
         }
 
-        pedidoGuardado = await queryRunner.manager.save(Pedido, pedidoExistente);
+        pedidoGuardado = await queryRunner.manager.findOne(Pedido, { 
+          where: { id: pedidoExistente.id }, relations: { detalles: true } 
+        });
 
       } else {
         const sucursalFinal = createPedidoDto.sucursalId || undefined;
-        const cajaAbierta = await this.obtenerCajaAbiertaSucursal(queryRunner.manager, empresaId, sucursalFinal);
+        
+        let cajaAbierta: Caja | null = null;
+        if (createPedidoDto.estado === 'PAGADO') {
+          cajaAbierta = await this.obtenerCajaAbiertaSucursal(queryRunner.manager, empresaId, sucursalFinal);
+          if (!cajaAbierta) throw new BadRequestException('Debe abrir una caja para cobrar el pedido');
+        }
 
         if (createPedidoDto.mesaId) {
           const mesaValida = await queryRunner.manager.findOne(Mesa, { where: { id: createPedidoDto.mesaId, empresaId } });
           if (!mesaValida) throw new BadRequestException('La mesa no pertenece a tu empresa');
 
-          if (createPedidoDto.estado === 'ABIERTO') {
-            await queryRunner.manager.update(Mesa, createPedidoDto.mesaId, { estado: 'OCUPADA' });
-          } else if (createPedidoDto.estado === 'PAGADO') {
-            await queryRunner.manager.update(Mesa, createPedidoDto.mesaId, { estado: 'LIBRE' });
-          }
+          const nuevoEstadoMesa = createPedidoDto.estado === 'PAGADO' ? 'LIBRE' : 'OCUPADA';
+          await queryRunner.manager.update(Mesa, createPedidoDto.mesaId, { estado: nuevoEstadoMesa });
         }
 
         for (const det of detallesFinales) {
@@ -254,20 +263,17 @@ export class PedidosService {
         }
 
         const pedidoNuevo = queryRunner.manager.create(Pedido, {
-          total: totalCalculado.toNumber(),
+          subtotal: subtotalCalculado.toNumber(),
+          ivaTotal: ivaCalculado.toNumber(),
+          total: totalFinal.toNumber(),
           empresaId,
-          sucursalId: sucursalFinal || undefined,
+          sucursalId: sucursalFinal,
           estado: createPedidoDto.estado || 'PAGADO',
           estadoCocina: 'PENDIENTE',
           metodoPago: createPedidoDto.metodoPago || 'EFECTIVO',
           direccionEntrega: createPedidoDto.direccionEntrega || undefined,
           costoEnvio: createPedidoDto.costoEnvio || 0,
           estadoDelivery: createPedidoDto.direccionEntrega ? 'PENDIENTE' : 'NO_APLICA',
-          tipoFactura: createPedidoDto.tipoFactura || 'FACTURA_B',
-          cuitFactura: createPedidoDto.cuitFactura || undefined,
-          razonSocialFactura: createPedidoDto.razonSocialFactura || undefined,
-          numeroComprobante,
-          caeSimulado,
           mesaId: createPedidoDto.mesaId || undefined,
           clienteId: createPedidoDto.clienteId || undefined,
           cajaId: cajaAbierta ? cajaAbierta.id : undefined,
@@ -301,7 +307,7 @@ export class PedidosService {
     try {
       const pedido = await queryRunner.manager.findOne(Pedido, {
         where: { id, empresaId },
-        relations: { detalles: { producto: true } }
+        relations: { detalles: true }
       });
 
       if (!pedido) throw new NotFoundException('Pedido no encontrado');
@@ -342,19 +348,23 @@ export class PedidosService {
     const where: any = { empresaId };
     if (sucursalId) where.sucursalId = sucursalId;
 
+    // Tope máximo de 100 registros por página para evitar colapsos
+    const safeLimit = limit > 100 ? 100 : limit;
+
     return this.pedidoRepository.find({
       where,
-      relations: { empresa: true, mesa: true, cliente: true, detalles: { producto: true } },
+      // Quitamos la entidad "empresa: true" para evitar fuga de datos y peso extra
+      relations: { mesa: true, cliente: true, detalles: { producto: true } }, 
       order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit
+      take: safeLimit,
+      skip: (page - 1) * safeLimit
     });
   }
 
   findPendientesCocina(empresaId: string, sucursalId: string | null) {
     const query = sucursalId
-      ? { empresaId, sucursalId, estadoCocina: 'PENDIENTE' }
-      : { empresaId, estadoCocina: 'PENDIENTE' };
+      ? { empresaId, sucursalId, estadoCocina: 'PENDIENTE', estado: In(['ABIERTO', 'PAGADO']) }
+      : { empresaId, estadoCocina: 'PENDIENTE', estado: In(['ABIERTO', 'PAGADO']) };
     return this.pedidoRepository.find({
       where: query,
       relations: { mesa: true, detalles: { producto: true } },
@@ -364,8 +374,8 @@ export class PedidosService {
 
   findDeliveryPendientes(empresaId: string, sucursalId: string | null) {
     const query = sucursalId
-      ? { empresaId, sucursalId, estadoDelivery: 'PENDIENTE' }
-      : { empresaId, estadoDelivery: 'PENDIENTE' };
+      ? { empresaId, sucursalId, estadoDelivery: 'PENDIENTE', estado: In(['ABIERTO', 'PAGADO']) }
+      : { empresaId, estadoDelivery: 'PENDIENTE', estado: In(['ABIERTO', 'PAGADO']) };
     return this.pedidoRepository.find({
       where: query,
       relations: { cliente: true, detalles: { producto: true } },
@@ -407,14 +417,17 @@ export class PedidosService {
     try {
       const pedido = await queryRunner.manager.findOne(Pedido, {
         where: { id, empresaId },
-        relations: { detalles: { producto: true } }
+        relations: { detalles: true }
       });
 
       if (!pedido) throw new NotFoundException('Pedido no encontrado');
+      
+      if (pedido.estado === 'PAGADO') {
+        throw new BadRequestException('No se puede borrar un pedido PAGADO. Use la anulación.');
+      }
 
       if (pedido.estado !== 'ANULADO') {
         await this.revertirStockPedido(queryRunner.manager, pedido);
-
         if (pedido.mesaId) {
           await queryRunner.manager.update(Mesa, pedido.mesaId, { estado: 'LIBRE' });
         }

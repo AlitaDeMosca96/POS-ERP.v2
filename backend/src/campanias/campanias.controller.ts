@@ -1,14 +1,15 @@
-import { Controller, Get, Post, Body, UseGuards, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Request } from '@nestjs/common';
 import { CampaniasService } from './campanias.service';
 import { CreateCampaniaDto } from './dto/create-campania.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Rol } from '../usuarios/enums/rol.enum';
 
 @Controller('campanias')
-@UseGuards(JwtAuthGuard)
 export class CampaniasController {
   constructor(private readonly campaniasService: CampaniasService) {}
 
   @Post()
+  @Roles(Rol.ADMIN)
   create(@Body() createCampaniaDto: CreateCampaniaDto, @Request() req: any) {
     createCampaniaDto.empresaId = req.user.empresaId;
     return this.campaniasService.create(createCampaniaDto);

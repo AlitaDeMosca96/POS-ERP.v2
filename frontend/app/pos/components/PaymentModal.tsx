@@ -4,7 +4,7 @@ interface Props {
   isOpen: boolean;
   total: number;
   onClose: () => void;
-  onConfirm: (datosPago: any) => void;
+  onConfirm: (datosPago: any) => Promise<void>;
 }
 
 export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Props) {
@@ -13,16 +13,17 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
   const [esDelivery, setEsDelivery] = useState(false);
   const [direccion, setDireccion] = useState('');
   const [costoEnvio, setCostoEnvio] = useState('0');
-  const [tipoFactura, setTipoFactura] = useState<'FACTURA_A' | 'FACTURA_B' | 'FACTURA_C'>('FACTURA_B');
-  const [cuit, setCuit] = useState('');
-  const [razonSocial, setRazonSocial] = useState('');
+  
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!isOpen) return null;
 
   const totalFinal = total + (esDelivery ? Number(costoEnvio) : 0);
   const vuelto = Number(montoRecibido) - totalFinal;
 
-  const handleConfirm = () => {
+  const handleConfirm = async () => {
+    if (isSubmitting) return;
+    
     if (metodoPago === 'EFECTIVO' && Number(montoRecibido) < totalFinal) {
       alert('El monto recibido es menor al total a pagar.');
       return;
@@ -32,23 +33,16 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
       return;
     }
 
-    let cuitLimpio = null;
-    if (tipoFactura !== 'FACTURA_B') {
-      cuitLimpio = cuit.replace(/[^0-9]/g, ''); // Solo números
-      if (cuitLimpio.length !== 11) {
-        alert('El CUIT debe tener exactamente 11 dígitos numéricos.');
-        return;
-      }
+    setIsSubmitting(true);
+    try {
+      await onConfirm({
+        metodoPago,
+        direccionEntrega: esDelivery ? direccion : null,
+        costoEnvio: esDelivery ? Number(costoEnvio) : 0,
+      });
+    } catch (error) {
+      setIsSubmitting(false);
     }
-
-    onConfirm({
-      metodoPago,
-      direccionEntrega: esDelivery ? direccion : null,
-      costoEnvio: esDelivery ? Number(costoEnvio) : 0,
-      tipoFactura,
-      cuitFactura: tipoFactura !== 'FACTURA_B' ? cuitLimpio : null,
-      razonSocialFactura: tipoFactura !== 'FACTURA_B' ? razonSocial : null,
-    });
   };
 
   return (
@@ -56,36 +50,13 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col max-h-[90vh]">
         <div className="bg-green-600 text-white p-4 text-center">
           <h3 className="text-2xl font-bold">Cobrar Ticket</h3>
-          <p className="text-3xl font-light mt-2">Total: ${totalFinal}</p>
+          <p className="text-3xl font-light mt-2">Total: ${totalFinal.toFixed(2)}</p>
         </div>
         
         <div className="p-6 space-y-5 overflow-y-auto">
-          <div className="bg-gray-50 border border-gray-200 p-4 rounded-lg">
-            <label className="block text-sm font-bold text-gray-700 mb-2">Comprobante Fiscal</label>
-            <select value={tipoFactura} onChange={e => setTipoFactura(e.target.value as any)} className="w-full border p-2 rounded text-gray-800 font-medium mb-3">
-              <option value="FACTURA_B">Factura B (Consumidor Final)</option>
-              <option value="FACTURA_A">Factura A (Responsable Inscripto)</option>
-              <option value="FACTURA_C">Factura C (Monotributista)</option>
-            </select>
-            {tipoFactura !== 'FACTURA_B' && (
-              <div className="space-y-3 mt-3">
-                <input 
-                  type="text" 
-                  placeholder="CUIT (11 dígitos)" 
-                  value={cuit} 
-                  onChange={e => setCuit(e.target.value)} 
-                  maxLength={13}
-                  className="w-full border p-2 rounded text-gray-800" 
-                />
-                <input 
-                  type="text" 
-                  placeholder="Razón Social" 
-                  value={razonSocial} 
-                  onChange={e => setRazonSocial(e.target.value)} 
-                  className="w-full border p-2 rounded text-gray-800" 
-                />
-              </div>
-            )}
+          
+          <div className="bg-gray-100 border border-gray-200 p-4 rounded-lg text-center text-sm text-gray-600">
+            Se emitirá un <strong>Ticket Interno</strong> (No válido como factura).
           </div>
 
           <div className="bg-orange-50 border border-orange-200 p-4 rounded-lg">
@@ -122,8 +93,10 @@ export default function PaymentModal({ isOpen, total, onClose, onConfirm }: Prop
         </div>
         
         <div className="p-4 bg-gray-50 border-t flex gap-3">
-          <button onClick={onClose} className="w-1/2 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300">Cancelar</button>
-          <button onClick={handleConfirm} className="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700">Confirmar Pago</button>
+          <button onClick={onClose} disabled={isSubmitting} className="w-1/2 bg-gray-200 text-gray-800 font-bold py-3 rounded-lg hover:bg-gray-300 disabled:opacity-50">Cancelar</button>
+          <button onClick={handleConfirm} disabled={isSubmitting} className="w-1/2 bg-green-600 text-white font-bold py-3 rounded-lg hover:bg-green-700 disabled:opacity-50">
+            {isSubmitting ? 'Procesando...' : 'Confirmar Pago'}
+          </button>
         </div>
       </div>
     </div>

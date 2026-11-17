@@ -12,22 +12,25 @@ export class Insumo {
   @Column({ type: 'varchar', length: 50, default: 'UNIDAD' })
   unidadMedida: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   stock: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
   costo: number;
 
+  @Column({ type: 'boolean', default: true })
+  controlaStock: boolean; // <-- NUEVO
+
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

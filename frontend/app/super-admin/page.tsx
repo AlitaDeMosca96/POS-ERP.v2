@@ -4,13 +4,19 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { fetcher } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
+import toast from 'react-hot-toast';
 
 export default function SuperAdminPage() {
-  const { user, loading: authLoading, logout } = useAuth();
+  const { user, loading: authLoading, logout, startImpersonation } = useAuth();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [metrics, setMetrics] = useState<any>(null);
   const [empresas, setEmpresas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Estados para el modal de soporte
+  const [empresaSoporte, setEmpresaSoporte] = useState<any>(null);
+  const [motivo, setMotivo] = useState('');
+  const [loadingSoporte, setLoadingSoporte] = useState(false);
 
   useEffect(() => {
     if (authLoading || !user || user.rol !== 'SUPER_ADMIN') return;
@@ -35,13 +41,31 @@ export default function SuperAdminPage() {
     logout('/master-login');
   };
 
+  const handleImpersonar = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!empresaSoporte || motivo.length < 5) return;
+    
+    setLoadingSoporte(true);
+    try {
+      const res = await fetcher(`/super-admin/empresas/${empresaSoporte.id}/impersonar`, {
+        method: 'POST',
+        body: JSON.stringify({ motivo })
+      });
+      
+      toast.success('Ingresando en modo soporte...');
+      startImpersonation(res.access_token, res.usuario);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al intentar entrar en modo soporte');
+      setLoadingSoporte(false);
+    }
+  };
+
   if (authLoading) {
     return <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center text-[#d4af37]">Verificando sesión maestra...</div>;
   }
 
-  // Protección de ruta
   if (!user || user.rol !== 'SUPER_ADMIN') {
-    return null; // El AuthProvider redirige a /
+    return null;
   }
 
   const renderContent = () => {
@@ -106,12 +130,13 @@ export default function SuperAdminPage() {
                     <th className="p-4 font-medium">Plan</th>
                     <th className="p-4 font-medium">Usuarios</th>
                     <th className="p-4 font-medium">Estado</th>
+                    <th className="p-4 font-medium">Acciones</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#2a2a2a]">
                   {empresas.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="p-8 text-center text-gray-500">No hay empresas registradas.</td>
+                      <td colSpan={6} className="p-8 text-center text-gray-500">No hay empresas registradas.</td>
                     </tr>
                   ) : (
                     empresas.map((emp) => (
@@ -124,6 +149,14 @@ export default function SuperAdminPage() {
                           <span className={`px-3 py-1 rounded-full text-xs font-bold ${emp.activa ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
                             {emp.activa ? 'Activa' : 'Suspendida'}
                           </span>
+                        </td>
+                        <td className="p-4">
+                          <button 
+                            onClick={() => setEmpresaSoporte(emp)}
+                            className="bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 px-3 py-1 rounded text-xs hover:bg-[#d4af37] hover:text-[#0a0a0a] transition"
+                          >
+                            Soporte
+                          </button>
                         </td>
                       </tr>
                     ))
@@ -239,6 +272,44 @@ export default function SuperAdminPage() {
       <main className="flex-1 flex flex-col h-screen overflow-hidden bg-[#0a0a0a]">
         {renderContent()}
       </main>
+
+      {/* Modal para pedir motivo de soporte */}
+      {empresaSoporte && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 z-50">
+          <div className="bg-[#121212] border border-[#2a2a2a] p-8 rounded-xl shadow-2xl w-full max-w-md">
+            <h2 className="text-2xl font-light text-white mb-2">Modo Soporte</h2>
+            <p className="text-gray-400 text-sm mb-6">Ingresá el motivo por el cual vas a acceder a la cuenta de <span className="text-[#d4af37] font-bold">{empresaSoporte.nombre}</span>. Este motivo quedará registrado en la auditoría.</p>
+            
+            <form onSubmit={handleImpersonar}>
+              <textarea
+                required
+                value={motivo}
+                onChange={e => setMotivo(e.target.value)}
+                className="w-full bg-[#0a0a0a] border border-[#2a2a2a] text-white p-3 rounded-lg focus:outline-none focus:border-[#d4af37] mb-6 resize-none h-32"
+                placeholder="Ej: Cliente reporta falla en la impresión de tickets..."
+                minLength={5}
+              />
+              <div className="flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={() => { setEmpresaSoporte(null); setMotivo(''); }} 
+                  disabled={loadingSoporte}
+                  className="w-1/2 py-3 rounded-lg text-gray-400 hover:text-white bg-[#1a1a1a] hover:bg-[#2a2a2a] transition"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={motivo.length < 5 || loadingSoporte}
+                  className="w-1/2 py-3 rounded-lg bg-[#d4af37] text-[#0a0a0a] font-bold hover:bg-[#b8962e] transition disabled:opacity-50"
+                >
+                  {loadingSoporte ? 'Ingresando...' : 'Ingresar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -19,4 +19,5 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 3000
-CMD ["node", "dist/main"]
+# Ejecuta las migraciones usando el código compilado y luego levanta el servidor
+CMD ["sh", "-c", "npm run migration:run:prod && node dist/main"]

@@ -15,7 +15,6 @@ import { CampaniasModule } from './campanias/campanias.module';
 import { CategoriasModule } from './categorias/categorias.module';
 import { ClientesModule } from './clientes/clientes.module';
 import { ComprasModule } from './compras/compras.module';
-import { EmpresasModule } from './empresas/empresas.module';
 import { InsumosModule } from './insumos/insumos.module';
 import { MesasModule } from './mesas/mesas.module';
 import { ModificadoresModule } from './modificadores/modificadores.module';
@@ -35,10 +34,23 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
     
-    ThrottlerModule.forRoot([{
-      ttl: 60000,
-      limit: 100,
-    }]),
+    ThrottlerModule.forRoot([
+      {
+        name: 'short', // Para endpoints sensibles (Login, 2FA)
+        ttl: 60000,    // 1 minuto
+        limit: 5,      // 5 peticiones
+      },
+      {
+        name: 'medium', // Para el uso general de la API
+        ttl: 60000,    // 1 minuto
+        limit: 100,    // 100 peticiones
+      },
+      {
+        name: 'long', // Para consultas de lectura masiva (KDS, Delivery)
+        ttl: 60000,    // 1 minuto
+        limit: 300,    // 300 peticiones
+      }
+    ]),
 
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -53,7 +65,7 @@ import { AuditoriaModule } from './auditoria/auditoria.module';
     
     AuditoriaModule,
     AuthModule, CajasModule, CampaniasModule, CategoriasModule, ClientesModule,
-    ComprasModule, EmpresasModule, InsumosModule, MesasModule, ModificadoresModule,
+    ComprasModule, InsumosModule, MesasModule, ModificadoresModule,
     PedidosModule, PlanesModule, ProductosModule, ProveedoresModule, RecetasModule,
     ReportesModule, ReservasModule, SucursalesModule, SuperAdminModule, UsuariosModule,
   ],

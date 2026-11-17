@@ -1,5 +1,5 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
-import { Plan } from '../../planes/entities/plane.entity'; // <-- NUEVO
+import { Plan } from '../../planes/entities/plane.entity';
 
 @Entity('empresas')
 export class Empresa {
@@ -21,18 +21,16 @@ export class Empresa {
   @Column({ type: 'boolean', default: true })
   activa: boolean;
 
-  // --- RELACIÓN CON EL PLAN ---
   @ManyToOne(() => Plan, { nullable: true })
-  @JoinColumn({ name: 'plan_id' })
+  @JoinColumn({ name: 'planId' })
   plan: Plan;
 
   @Column('uuid', { nullable: true })
   planId: string;
-  // ---------------------------
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

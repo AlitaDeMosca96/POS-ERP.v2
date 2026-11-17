@@ -7,13 +7,13 @@ export class Modificadore {
   id: string;
 
   @Column({ type: 'varchar', length: 255 })
-  nombre: string; // Ej: "Sin cebolla", "Bien cocido", "Con queso extra"
+  nombre: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
-  precioExtra: number; // Si es gratis, es 0. Si cuesta $500, se suma al total.
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 0 })
+  precioExtra: number;
 
   @ManyToOne(() => Producto, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'producto_id' })
+  @JoinColumn({ name: 'productoId' })
   producto: Producto;
 
   @Column('uuid')

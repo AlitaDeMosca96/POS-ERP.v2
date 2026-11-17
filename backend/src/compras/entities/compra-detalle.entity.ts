@@ -7,17 +7,23 @@ export class CompraDetalle {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
   cantidad: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
   costoUnitario: number;
 
   @ManyToOne(() => Compra, compra => compra.detalles, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'compra_id' })
+  @JoinColumn({ name: 'compraId' })
   compra: Compra;
 
+  @Column('uuid')
+  compraId: string;
+
   @ManyToOne(() => Insumo)
-  @JoinColumn({ name: 'insumo_id' })
+  @JoinColumn({ name: 'insumoId' })
   insumo: Insumo;
+
+  @Column('uuid')
+  insumoId: string;
 }

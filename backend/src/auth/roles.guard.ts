@@ -12,10 +12,11 @@ export class RolesGuard implements CanActivate {
       context.getClass(),
     ]);
     if (!requiredRoles) {
-      return true;
+      return true; // Si la ruta no pide roles específicos, pasa (pero igual requiere estar logueado por el JwtAuthGuard)
     }
     const { user } = context.switchToHttp().getRequest();
-    if (!user) return true; 
+    if (!user) return false; // Si pide roles y no hay usuario, rebota.
+    
     return requiredRoles.some((role) => user.rol === role);
   }
 }

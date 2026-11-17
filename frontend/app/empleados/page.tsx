@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import toast from 'react-hot-toast';
+import { fetcher } from '../../lib/api';
 
 interface Sucursal {
   id: string;
@@ -28,29 +30,22 @@ export default function EmpleadosPage() {
   const [rol, setRol] = useState('CAJERO');
   const [sucursalId, setSucursalId] = useState('');
 
-  const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-
   useEffect(() => {
-    if (!token) {
-      router.push('/');
-      return;
-    }
     cargarDatos();
-  }, [router, token]);
+  }, []);
 
   const cargarDatos = async () => {
     try {
       const [resEmp, resSuc] = await Promise.all([
-        fetch('/api/usuarios', { headers: { Authorization: `Bearer ${token}` } }),
-        fetch('/api/sucursales', { headers: { Authorization: `Bearer ${token}` } })
+        fetcher('/usuarios'),
+        fetcher('/sucursales')
       ]);
-      setEmpleados(await resEmp.json());
-      const sucs = await resSuc.json();
-      setSucursales(sucs);
-      if (sucs.length > 0) setSucursalId(sucs[0].id);
-      setLoading(false);
-    } catch (error) {
-      console.error(error);
+      setEmpleados(resEmp || []);
+      setSucursales(resSuc || []);
+      if (resSuc && resSuc.length > 0) setSucursalId(resSuc[0].id);
+    } catch (error: any) {
+      toast.error(error.message || 'Error al cargar datos');
+    } finally {
       setLoading(false);
     }
   };
@@ -58,21 +53,16 @@ export default function EmpleadosPage() {
   const handleCrearEmpleado = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const res = await fetch('/api/usuarios', {
+      await fetcher('/usuarios', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
         body: JSON.stringify({ nombre, email, password, rol, sucursalId: sucursalId || null })
       });
 
-      if (res.ok) {
-        alert('Empleado creado con éxito');
-        setNombre(''); setEmail(''); setPassword('');
-        cargarDatos();
-      } else {
-        alert('Error al crear el empleado. Verificá si el email ya existe.');
-      }
-    } catch (error) {
-      console.error(error);
+      toast.success('Empleado creado con éxito');
+      setNombre(''); setEmail(''); setPassword('');
+      cargarDatos();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al crear el empleado. Verificá si el email ya existe.');
     }
   };
 
@@ -106,8 +96,9 @@ export default function EmpleadosPage() {
             />
             <select value={rol} onChange={e => setRol(e.target.value)} className="border p-2 rounded text-gray-800">
               <option value="ADMIN">Administrador</option>
-              <option value="CAJERO">Cajero / Mozo</option>
-              <option value="COCINERO">Cocinero</option>
+              <option value="CAJERO">Cajero</option>
+              <option value="MOZO">Mozo</option>
+              <option value="COCINA">Cocina</option>
             </select>
             <select value={sucursalId} onChange={e => setSucursalId(e.target.value)} className="border p-2 rounded text-gray-800">
               <option value="">Sin Sucursal</option>

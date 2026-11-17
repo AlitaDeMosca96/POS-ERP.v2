@@ -9,6 +9,9 @@ async function bootstrap() {
   // Seguridad HTTP
   app.use(helmet());
 
+  // Confiar en el proxy de Docker/Next para leer la IP real del cliente
+  app.set('trust proxy', 1);
+
   // Configuración de CORS flexible
   const corsOrigins = process.env.CORS_ORIGIN 
     ? process.env.CORS_ORIGIN.split(',') 
@@ -23,7 +26,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe({
     transform: true,
     whitelist: true, 
-    forbidNonWhitelisted: true, // Rechaza campos extra que no estén en el DTO
+    forbidNonWhitelisted: true,
   }));
 
   await app.listen(process.env.PORT ?? 3000, '0.0.0.0');

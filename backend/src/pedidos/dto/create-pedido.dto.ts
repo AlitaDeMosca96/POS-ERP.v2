@@ -43,7 +43,7 @@ export class CreatePedidoDto {
 
   @IsString()
   @IsOptional()
-  @IsIn(['ABIERTO', 'PAGADO', 'ANULADO'], { message: 'Estado inválido' })
+  @IsIn(['ABIERTO', 'PAGADO'], { message: 'Estado inválido. Para anular use el endpoint dedicado.' })
   estado?: string;
 
   @IsString()
@@ -53,7 +53,7 @@ export class CreatePedidoDto {
 
   @IsString()
   @IsOptional()
-  @IsIn(['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'MERCADO_PAGO'], { message: 'Método de pago inválido' })
+  @IsIn(['EFECTIVO', 'TARJETA', 'TRANSFERENCIA', 'MERCADO_PAGO', 'PENDIENTE'], { message: 'Método de pago inválido' })
   metodoPago?: string;
 
   @IsString()

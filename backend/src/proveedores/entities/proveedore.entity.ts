@@ -19,15 +19,15 @@ export class Proveedore {
   direccion: string;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

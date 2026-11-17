@@ -8,7 +8,7 @@ import { useAuth } from '../../../context/AuthContext';
 export default function SeguridadPage() {
   const { user, loading: authLoading } = useAuth();
   
-  const [qrCode, setQrCode] = useState('');
+  const [qrCode, setQrCode] = useState(''); // Ahora guarda la imagen Base64
   const [secret, setSecret] = useState('');
   const [code, setCode] = useState('');
   const [isEnabled, setIsEnabled] = useState(false);
@@ -16,7 +16,6 @@ export default function SeguridadPage() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   
-  // Estado para manejar la regeneración si el 2FA ya está activo en el servidor
   const [requiresCurrentCode, setRequiresCurrentCode] = useState(false);
   const [currentCode, setCurrentCode] = useState('');
 
@@ -24,7 +23,6 @@ export default function SeguridadPage() {
     setLoading(true);
     setError('');
     try {
-      // Si el backend pide código previo, lo enviamos
       const payload = requiresCurrentCode ? { code: currentCode } : {};
       
       const data = await fetcher('/auth/2fa/generate', { 
@@ -32,12 +30,11 @@ export default function SeguridadPage() {
         body: JSON.stringify(payload)
       });
       
-      setQrCode(data.otpauthUrl);
+      setQrCode(data.qrCodeDataUrl); // Guardamos la Data URL generada por el backend
       setSecret(data.secret);
       setRequiresCurrentCode(false);
       setCurrentCode('');
     } catch (err: any) {
-      // Si el backend rechaza porque ya hay un 2FA activo
       if (err.message && err.message.includes('Se requiere un código 2FA')) {
         setRequiresCurrentCode(true);
         setError('Ingresá tu código actual de 6 dígitos para generar un nuevo secreto.');
@@ -99,7 +96,6 @@ export default function SeguridadPage() {
             <div className="text-center py-10">
               <p className="text-gray-300 mb-6">El 2FA está desactivado. Te recomendamos activarlo para evitar accesos no autorizados.</p>
               
-              {/* Input condicional para cuando el servidor requiere validar el código anterior */}
               {requiresCurrentCode && (
                 <div className="mb-6 max-w-xs mx-auto">
                   <label className="block text-sm text-gray-400 mb-2">Código Actual de 6 dígitos</label>
@@ -127,7 +123,8 @@ export default function SeguridadPage() {
               <div className="flex flex-col items-center">
                 <p className="text-sm text-gray-400 mb-4 text-center">1. Escaneá este código con Google Authenticator</p>
                 <div className="bg-white p-4 rounded-xl">
-                  <img src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(qrCode)}`} alt="QR Code" width={200} height={200} />
+                  {/* ACA USAMOS LA IMAGEN DEL BACKEND */}
+                  <img src={qrCode} alt="QR Code" width={200} height={200} />
                 </div>
                 <p className="text-xs text-gray-500 mt-4 text-center">O ingresá este código manual: <br/> <span className="font-mono text-[#d4af37] select-all">{secret}</span></p>
               </div>

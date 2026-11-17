@@ -1,15 +1,12 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Req } from '@nestjs/common';
 import { InsumosService } from './insumos.service';
 import { CreateInsumoDto } from './dto/create-insumo.dto';
 import { UpdateInsumoDto } from './dto/update-insumo.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Roles } from '../auth/decorators/roles.decorator';
 import { Rol } from '../usuarios/enums/rol.enum';
 import { RequestWithUser } from '../auth/interfaces/request-with-user.interface';
 
 @Controller('insumos')
-@UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Rol.ADMIN)
 export class InsumosController {
   constructor(private readonly insumosService: InsumosService) {}
@@ -32,7 +29,7 @@ export class InsumosController {
 
   @Patch(':id')
   update(@Param('id') id: string, @Body() updateInsumoDto: UpdateInsumoDto, @Req() req: RequestWithUser) {
-    return this.insumosService.update(id, updateInsumoDto, req.user.empresaId);
+    return this.insumosService.update(id, updateInsumoDto, req.user.empresaId, req.user.id);
   }
 
   @Delete(':id')

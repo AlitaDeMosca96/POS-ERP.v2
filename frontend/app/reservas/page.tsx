@@ -64,6 +64,12 @@ export default function ReservasPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
+        
+        {/* CARTEL BETA AGREGADO */}
+        <div className="bg-red-600 text-white p-4 rounded-lg shadow-md text-center font-bold mb-6">
+          ⚠️ MÓDULO EN DESARROLLO (BETA) - La creación y cancelación de reservas puede fallar.
+        </div>
+
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Libro de Reservas</h1>
           <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">Volver al Dashboard</button>

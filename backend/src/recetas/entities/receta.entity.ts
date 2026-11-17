@@ -8,16 +8,22 @@ export class Receta {
   id: string;
 
   @ManyToOne(() => Producto, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'producto_id' })
+  @JoinColumn({ name: 'productoId' })
   producto: Producto;
 
+  @Column('uuid')
+  productoId: string;
+
   @ManyToOne(() => Insumo, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'insumo_id' })
+  @JoinColumn({ name: 'insumoId' })
   insumo: Insumo;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column('uuid')
+  insumoId: string;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
   cantidad: number;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

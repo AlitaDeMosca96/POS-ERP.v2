@@ -5,13 +5,13 @@ interface Venta {
   createdAt: string;
   total: number;
   metodoPago: string;
-  tipoFactura?: string;
   cuitFactura?: string;
   razonSocialFactura?: string;
   numeroComprobante?: string;
-  caeSimulado?: string;
   cliente?: { nombre: string };
   mesa?: { nombre: string };
+  empresa?: { nombre: string; cuit: string; direccion?: string };
+  sucursal?: { nombre: string; direccion?: string };
   detalles: {
     cantidad: number;
     precioUnitario: number;
@@ -53,19 +53,23 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
 
           <div className="p-6 overflow-y-auto font-mono text-sm text-black ticket-print-area bg-white">
             <div className="text-center mb-4">
-              <h2 className="text-xl font-bold uppercase">Mi ERP Gastronómico</h2>
-              <p className="text-xs">CUIT: 20-12345678-9</p>
-              <p className="text-xs">Av. Siempre Viva 123</p>
+              <h2 className="text-xl font-bold uppercase">{venta.empresa?.nombre || 'Comercio'}</h2>
+              <p className="text-xs">CUIT: {venta.empresa?.cuit || '---'}</p>
+              <p className="text-xs">{venta.sucursal?.direccion || venta.empresa?.direccion || '---'}</p>
               <p className="text-xs mt-2">------------------------------</p>
             </div>
 
-            <div className="flex justify-between mb-1 text-xs">
+            <div className="text-center font-bold text-red-600 my-2 border-y border-red-600 py-1">
+              DOCUMENTO NO VÁLIDO COMO FACTURA
+            </div>
+
+            <div className="flex justify-between mb-1 text-xs mt-2">
               <span>FECHA:</span>
               <span>{new Date(venta.createdAt).toLocaleString('es-AR')}</span>
             </div>
             <div className="flex justify-between mb-1 text-xs">
               <span>TICKET N°:</span>
-              <span>{venta.id.slice(0, 8).toUpperCase()}</span>
+              <span>{venta.numeroComprobante || venta.id.slice(0, 8).toUpperCase()}</span>
             </div>
             <div className="flex justify-between mb-1 text-xs">
               <span>UBICACIÓN:</span>
@@ -74,20 +78,8 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
             
             <p className="text-xs my-2">------------------------------</p>
             
-            {/* DATOS FISCALES */}
+            {/* DATOS DEL CLIENTE (Opcional) */}
             <div className="mb-4 text-xs">
-              <div className="flex justify-between font-bold">
-                <span>COMPROBANTE:</span>
-                <span>{venta.tipoFactura ? venta.tipoFactura.replace('_', ' ') : 'FACTURA B'}</span>
-              </div>
-              
-              {venta.numeroComprobante && (
-                <div className="flex justify-between mt-1">
-                  <span>NRO:</span>
-                  <span>{venta.numeroComprobante}</span>
-                </div>
-              )}
-              
               {venta.cuitFactura && (
                 <>
                   <div className="flex justify-between mt-1">
@@ -106,13 +98,6 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
                   <span>{venta.cliente.nombre}</span>
                 </div>
               )}
-
-              {venta.caeSimulado && (
-                <div className="flex justify-between mt-2 text-[10px] text-gray-600 border-t border-dashed border-gray-300 pt-1">
-                  <span>CAE:</span>
-                  <span>{venta.caeSimulado}</span>
-                </div>
-              )}
             </div>
 
             <p className="text-xs my-2">------------------------------</p>
@@ -121,7 +106,7 @@ export default function TicketModal({ isOpen, onClose, venta }: TicketModalProps
               {venta.detalles.map((det, i) => (
                 <div key={i} className="mb-2">
                   <div className="flex justify-between">
-                    <span>{det.cantidad}x {det.producto.nombre}</span>
+                    <span>{det.cantidad}x {det.producto?.nombre || 'Producto eliminado'}</span>
                     <span>${(Number(det.precioUnitario) * det.cantidad).toFixed(2)}</span>
                   </div>
                   {det.notas && <div className="text-xs pl-4 text-gray-600">* {det.notas}</div>}

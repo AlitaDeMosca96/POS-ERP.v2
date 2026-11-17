@@ -1,15 +1,16 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Request, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Request } from '@nestjs/common';
 import { MesasService } from './mesas.service';
 import { CreateMesaDto } from './dto/create-mesa.dto';
 import { UpdateMesaDto } from './dto/update-mesa.dto';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
+import { Rol } from '../usuarios/enums/rol.enum';
 
 @Controller('mesas')
-@UseGuards(JwtAuthGuard)
 export class MesasController {
   constructor(private readonly mesasService: MesasService) {}
 
   @Post()
+  @Roles(Rol.ADMIN)
   create(@Body() createMesaDto: CreateMesaDto, @Request() req: any) {
     createMesaDto.empresaId = req.user.empresaId;
     if (req.user.sucursalId) createMesaDto.sucursalId = req.user.sucursalId;
@@ -17,9 +18,8 @@ export class MesasController {
   }
 
   @Get()
-  findAll(@Request() req: any, @Query('sucursalId') querySucursalId?: string) {
-    const targetSucursal = req.user.sucursalId ? req.user.sucursalId : (querySucursalId || null);
-    return this.mesasService.findAll(req.user.empresaId, targetSucursal);
+  findAll(@Request() req: any) {
+    return this.mesasService.findAll(req.user.empresaId, req.user.sucursalId);
   }
 
   @Get(':id')
@@ -28,11 +28,13 @@ export class MesasController {
   }
 
   @Patch(':id')
+  @Roles(Rol.ADMIN, Rol.MOZO, Rol.CAJERO)
   update(@Param('id') id: string, @Body() updateMesaDto: UpdateMesaDto, @Request() req: any) {
     return this.mesasService.update(id, updateMesaDto, req.user.empresaId);
   }
 
   @Delete(':id')
+  @Roles(Rol.ADMIN)
   remove(@Param('id') id: string, @Request() req: any) {
     return this.mesasService.remove(id, req.user.empresaId);
   }

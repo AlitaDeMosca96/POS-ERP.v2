@@ -3,7 +3,7 @@ import { AuthService } from './auth.service';
 import { TwoFactorCryptoService } from './two-factor-crypto.service';
 import { UsuariosService } from '../usuarios/usuarios.service';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs';
+import * as bcrypt from 'bcrypt';
 
 describe('AuthService', () => {
   let authService: AuthService;

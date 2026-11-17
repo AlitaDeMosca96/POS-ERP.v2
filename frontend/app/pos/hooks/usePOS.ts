@@ -8,13 +8,12 @@ export interface Mesa { id: string; nombre: string; estado: string; }
 export interface Cliente { id: string; nombre: string; }
 export interface Modificador { id: string; nombre: string; precioExtra: number; }
 export interface Producto { id: string; nombre: string; precio: number; stock: number; categoriaId?: string; }
-export interface ItemCarrito extends Producto { cantidad: number; notas?: string; }
+export interface ItemCarrito extends Producto { cantidad: number; notas?: string; modificadoresIds?: string[]; }
 
 export function usePOS() {
   const router = useRouter();
   const { user } = useAuth();
   
-  // Usamos la sucursal del usuario autenticado (viene del backend), no del localStorage
   const sucursalActiva = user?.sucursalId || '';
 
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -36,7 +35,6 @@ export function usePOS() {
   const [ventaExitosa, setVentaExitosa] = useState<any>(null);
 
   useEffect(() => {
-    // Si no hay usuario, no cargar nada (el AuthContext redirige)
     if (!user) return;
 
     const cargarDatos = async () => {
@@ -71,9 +69,11 @@ export function usePOS() {
       const pedidoAbierto = await fetcher(`/pedidos/mesa/${nuevaMesaId}`);
       if (pedidoAbierto && pedidoAbierto.id) {
         setPedidoActualId(pedidoAbierto.id);
+        setClienteActivoId(pedidoAbierto.clienteId || '');
         setCarrito(pedidoAbierto.detalles.map((det: any) => ({
           id: det.producto.id, nombre: det.producto.nombre, precio: Number(det.precioUnitario),
-          cantidad: Number(det.cantidad), stock: 999, notas: det.notas
+          cantidad: Number(det.cantidad), stock: 999, notas: det.notas,
+          modificadoresIds: [] // Si viene de la BD no tenemos los IDs exactos, el backend recalculará el precio base
         })));
       }
     } catch (error) {
@@ -89,36 +89,51 @@ export function usePOS() {
         setModificadoresDisponibles(mods);
         setModificadoresSeleccionados([]);
       } else {
-        agregarAlCarrito(producto, producto.precio, '');
+        agregarAlCarrito(producto, producto.precio, '', []);
       }
     } catch (error) {
-      agregarAlCarrito(producto, producto.precio, '');
+      agregarAlCarrito(producto, producto.precio, '', []);
     }
   };
 
-  const agregarAlCarrito = (producto: Producto, precioFinal: number, notas: string) => {
+  // CORREGIDO: Agregamos modificadoresIds y evitamos la mutación de estado (StrictMode)
+  const agregarAlCarrito = (producto: Producto, precioFinal: number, notas: string, modificadoresIds: string[] = []) => {
     setCarrito(prev => {
       const existeIndex = prev.findIndex(item => item.id === producto.id && item.notas === notas);
       if (existeIndex >= 0) {
-        const nuevoCarrito = [...prev];
-        nuevoCarrito[existeIndex].cantidad += 1;
-        return nuevoCarrito;
+        return prev.map((item, idx) => 
+          idx === existeIndex ? { ...item, cantidad: item.cantidad + 1 } : item
+        );
       }
-      return [...prev, { ...producto, precio: precioFinal, cantidad: 1, notas }];
+      return [...prev, { ...producto, precio: precioFinal, cantidad: 1, notas, modificadoresIds }];
     });
+  };
+
+  const quitarDelCarrito = (index: number) => {
+    setCarrito(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const cambiarCantidad = (index: number, nuevaCantidad: number) => {
+    if (nuevaCantidad <= 0) return quitarDelCarrito(index);
+    setCarrito(prev => prev.map((item, i) => i === index ? { ...item, cantidad: nuevaCantidad } : item));
   };
 
   const confirmarModificadores = () => {
     if (!productoModificando) return;
     const extra = modificadoresSeleccionados.reduce((acc, mod) => acc + Number(mod.precioExtra), 0);
-    agregarAlCarrito(productoModificando, Number(productoModificando.precio) + extra, modificadoresSeleccionados.map(m => m.nombre).join(', '));
+    const ids = modificadoresSeleccionados.map(m => m.id);
+    agregarAlCarrito(
+      productoModificando, 
+      Number(productoModificando.precio) + extra, 
+      modificadoresSeleccionados.map(m => m.nombre).join(', '),
+      ids
+    );
     setProductoModificando(null);
   };
 
   const liberarMesaVacia = async () => {
     try {
       if (pedidoActualId) {
-        // CORREGIDO: Usamos anular, no PATCH estado. El DTO restringido ya no acepta estado.
         await fetcher(`/pedidos/${pedidoActualId}/anular`, { 
           method: 'PATCH', 
           body: JSON.stringify({ motivo: 'Mesa liberada sin consumo' }) 
@@ -139,8 +154,15 @@ export function usePOS() {
       pedidoId: pedidoActualId,
       estado: 'PAGADO',
       sucursalId: sucursalActiva || null,
+      mesaId: mesaActivaId || null, // CORREGIDO: Enviar mesa
+      clienteId: clienteActivoId || null, // CORREGIDO: Enviar cliente
       ...datosPago,
-      detalles: carrito.map(item => ({ productoId: item.id, cantidad: item.cantidad, notas: item.notas }))
+      detalles: carrito.map(item => ({ 
+        productoId: item.id, 
+        cantidad: item.cantidad, 
+        notas: item.notas,
+        modificadoresIds: item.modificadoresIds || [] // CORREGIDO: Enviar modificadores
+      }))
     };
 
     try {
@@ -162,7 +184,12 @@ export function usePOS() {
       mesaId: mesaActivaId || null,
       clienteId: clienteActivoId || null,
       sucursalId: sucursalActiva || null,
-      detalles: carrito.map(item => ({ productoId: item.id, cantidad: item.cantidad, notas: item.notas }))
+      detalles: carrito.map(item => ({ 
+        productoId: item.id, 
+        cantidad: item.cantidad, 
+        notas: item.notas,
+        modificadoresIds: item.modificadoresIds || []
+      }))
     };
     try {
       await fetcher('/pedidos', { method: 'POST', body: JSON.stringify(pedidoData) });
@@ -173,11 +200,11 @@ export function usePOS() {
       const [prods, mess] = await Promise.all([ fetcher('/productos'), fetcher(urlMesas) ]);
       setProductos(prods || []);
       setMesas(mess || []);
-    } catch (error) { console.error(error); }
+    } catch (error: any) { alert(`Error: ${error.message}`); }
   };
 
   return {
     state: { productos, categorias, mesas, clientes, carrito, loading, mesaActivaId, clienteActivoId, categoriaActiva, productoModificando, modificadoresDisponibles, modificadoresSeleccionados, modalPagoAbierto, ventaExitosa },
-    actions: { setClienteActivoId, setCategoriaActiva, setModalPagoAbierto, setVentaExitosa, setProductoModificando, setModificadoresSeleccionados, handleMesaChange, handleProductoClick, confirmarModificadores, liberarMesaVacia, procesarPago, guardarMesa }
+    actions: { setClienteActivoId, setCategoriaActiva, setModalPagoAbierto, setVentaExitosa, setProductoModificando, setModificadoresSeleccionados, handleMesaChange, handleProductoClick, confirmarModificadores, liberarMesaVacia, procesarPago, guardarMesa, quitarDelCarrito, cambiarCantidad }
   };
 }

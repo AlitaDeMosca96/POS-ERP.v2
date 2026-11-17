@@ -91,6 +91,12 @@ export default function KioscoPage() {
   return (
     <div className="flex h-screen bg-gray-50 overflow-hidden font-sans">
       <div className="w-2/3 flex flex-col">
+        
+        {/* CARTEL BETA AGREGADO */}
+        <div className="bg-red-600 text-white text-center p-3 font-bold text-lg w-full z-50">
+          ⚠️ MÓDULO EN DESARROLLO (BETA) - El cobro y confirmación de pedidos está fallando. Usar con precaución.
+        </div>
+
         <div className="bg-white p-6 shadow-sm flex justify-between items-center z-10">
           <h1 className="text-3xl font-black text-gray-800 tracking-tight">Bienvenido</h1>
           <button onClick={() => router.push('/dashboard')} className="text-sm text-gray-400 hover:text-gray-700">Salir</button>

@@ -44,6 +44,12 @@ export default function CampaniasPage() {
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-5xl mx-auto space-y-8">
+
+        {/* CARTEL BETA AGREGADO */}
+        <div className="bg-red-600 text-white p-4 rounded-lg shadow-md text-center font-bold mb-6">
+          ⚠️ MÓDULO EN DESARROLLO (BETA) - El envío de campañas no está operativo, solo simula la acción.
+        </div>
+
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-800">Campañas de Marketing</h1>
           <button onClick={() => router.push('/dashboard')} className="text-blue-600 hover:underline">Volver al Dashboard</button>

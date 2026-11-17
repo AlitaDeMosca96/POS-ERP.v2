@@ -8,18 +8,18 @@ export class Compra {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
   total: number;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
   @ManyToOne(() => Proveedore)
-  @JoinColumn({ name: 'proveedor_id' })
+  @JoinColumn({ name: 'proveedorId' })
   proveedor: Proveedore;
 
   @Column('uuid')
@@ -28,10 +28,10 @@ export class Compra {
   @Column({ type: 'boolean', default: false })
   pagada: boolean;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   fecha: Date;
 
   @OneToMany(() => CompraDetalle, detalle => detalle.compra, { cascade: true })

@@ -23,14 +23,14 @@ export class Usuario {
   rol: Rol; 
 
   @ManyToOne(() => Empresa, { nullable: true })
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid', { nullable: true })
   empresaId: string;
 
   @ManyToOne(() => Sucursal, { nullable: true })
-  @JoinColumn({ name: 'sucursal_id' })
+  @JoinColumn({ name: 'sucursalId' })
   sucursal: Sucursal;
 
   @Column('uuid', { nullable: true })
@@ -48,15 +48,15 @@ export class Usuario {
   @Column({ type: 'int', default: 0 })
   intentosFallidos: number;
 
-  @Column({ type: 'timestamp', nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   bloqueadoHasta: Date | null;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updatedAt: Date;
 }

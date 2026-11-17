@@ -8,7 +8,7 @@ export class Reserva {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ type: 'timestamp' })
+  @Column({ type: 'timestamptz' })
   fechaHora: Date;
 
   @Column({ type: 'int' })
@@ -18,29 +18,29 @@ export class Reserva {
   estado: string;
 
   @ManyToOne(() => Empresa)
-  @JoinColumn({ name: 'empresa_id' })
+  @JoinColumn({ name: 'empresaId' })
   empresa: Empresa;
 
   @Column('uuid')
   empresaId: string;
 
   @ManyToOne(() => Mesa, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'mesa_id' })
+  @JoinColumn({ name: 'mesaId' })
   mesa: Mesa;
 
   @Column('uuid')
   mesaId: string;
 
   @ManyToOne(() => Cliente, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'cliente_id' })
+  @JoinColumn({ name: 'clienteId' })
   cliente: Cliente;
 
   @Column('uuid')
   clienteId: string;
 
-  @DeleteDateColumn()
+  @DeleteDateColumn({ type: 'timestamptz' })
   deletedAt: Date;
 
-  @CreateDateColumn()
+  @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
 }

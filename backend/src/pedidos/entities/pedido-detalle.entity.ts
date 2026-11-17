@@ -10,8 +10,17 @@ export class PedidoDetalle {
   @Column({ type: 'int' })
   cantidad: number;
 
-  @Column({ type: 'decimal', precision: 10, scale: 2 })
-  precioUnitario: number;
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  precioUnitario: number; // Precio final con IVA incluido
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  subtotal: number; // Neto (sin IVA)
+
+  @Column({ type: 'numeric', precision: 14, scale: 2, default: 21 })
+  alicuotaIva: number;
+
+  @Column({ type: 'numeric', precision: 14, scale: 2 })
+  ivaTotal: number; // Monto del IVA de esta línea
 
   @Column({ type: 'varchar', length: 255, nullable: true })
   notas: string;
@@ -20,10 +29,16 @@ export class PedidoDetalle {
   recetaSnapshot: Array<{ insumoId: string; nombre: string; cantidad: number }> | null;
 
   @ManyToOne(() => Pedido, pedido => pedido.detalles, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'pedido_id' })
+  @JoinColumn({ name: 'pedidoId' })
   pedido: Pedido;
 
+  @Column('uuid')
+  pedidoId: string;
+
   @ManyToOne(() => Producto)
-  @JoinColumn({ name: 'producto_id' })
+  @JoinColumn({ name: 'productoId' })
   producto: Producto;
+
+  @Column('uuid')
+  productoId: string;
 }
